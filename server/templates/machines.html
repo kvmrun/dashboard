@@ -1,0 +1,40 @@
+{{template "layout" .}}
+
+{{define "content"}}
+<h1>Machines</h1>
+{{if .Error}}
+    <p class="error">{{.Error}}</p>
+{{else}}
+<table id="machines">
+    <thead>
+    <tr>
+        <th>Name</th><th>PID</th><th>Mem (MiB)</th><th>CPUs</th>
+        <th>%CPU</th><th>State</th><th>Time</th><th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{range .Machines}}
+    <tr>
+        <td><a href="/machines/{{.Name}}">{{.Name}}</a></td>
+        <td>{{if .PID}}{{.PID}}{{else}}---{{end}}</td>
+        <td>{{.MemActual}}/{{.MemTotal}}</td>
+        <td>{{.CPUsActual}}/{{.CPUsTotal}}</td>
+        <td>{{.CpuPercent}}</td>
+        <td>{{.State}}</td>
+        <td>{{.Lifetime}}</td>
+        <td class="actions">
+            <form method="post" action="/machines/{{.Name}}/start" class="inline">
+                <button type="submit">Start</button>
+            </form>
+            <form method="post" action="/machines/{{.Name}}/stop" class="inline">
+                <button type="submit">Stop</button>
+            </form>
+        </td>
+    </tr>
+    {{else}}
+    <tr><td colspan="8">No machines configured.</td></tr>
+    {{end}}
+    </tbody>
+</table>
+{{end}}
+{{end}}

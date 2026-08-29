@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login · kvmrun dashboard</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body class="login-page">
+<form class="login-box" method="post" action="/login">
+    <h1>kvmrun dashboard</h1>
+    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+    <label>Username
+        <input type="text" name="username" autofocus required>
+    </label>
+    <label>Password
+        <input type="password" name="password" required>
+    </label>
+    <button type="submit">Log in</button>
+</form>
+</body>
+</html>
