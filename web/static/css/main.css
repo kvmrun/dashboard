@@ -116,7 +116,7 @@ nav .user {
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
-    width: 320px;
+    width: 400px;
 }
 
 .login-box h1 {
