@@ -22,13 +22,7 @@ func TestPagesExecute(t *testing.T) {
 		"machines.html": {
 			"Title":    "Machines",
 			"Page":     "machines",
-			"Machines": []model.MachineSummary{{Name: "vm1", State: "running"}},
-		},
-		"machine_detail.html": {
-			"Title":   "vm1",
-			"Page":    "machines",
-			"Name":    "vm1",
-			"Machine": &model.MachineDetail{Name: "vm1", State: "running"},
+			"Selected": "vm1",
 		},
 		"system.html": {
 			"Title": "Overview",

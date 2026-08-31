@@ -43,8 +43,8 @@ func New(cfg Config) *Server {
 
 	// Each page is parsed together with the shared layout into its own
 	// template set, so the "content" block of different pages never collide.
-	pages := make(map[string]*template.Template, 5)
-	for _, name := range []string{"machines.html", "machine_detail.html", "system.html", "tasks.html", "top.html"} {
+	pages := make(map[string]*template.Template, 4)
+	for _, name := range []string{"machines.html", "system.html", "tasks.html", "top.html"} {
 		pages[name] = template.Must(template.New(name).ParseFS(templates.FS, "layout.html", name))
 	}
 	loginTmpl := template.Must(template.New("login.html").ParseFS(templates.FS, "login.html"))

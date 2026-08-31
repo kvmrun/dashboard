@@ -15,14 +15,11 @@ import (
 	"github.com/0xef53/kvmrun-dashboard/internal/model"
 )
 
-// MachinesList renders the VM list page — the "vmm list" equivalent.
+// MachinesList renders the master-detail VM page. The VM list and the
+// selected machine's detail are loaded client-side from the JSON API
+// (/api/v1/machines), so the page itself needs no daemon call.
 func (h *Handlers) MachinesList(c *gin.Context) {
-	machines, err := h.listMachines(c.Request.Context())
-	if err != nil {
-		h.render(c, "machines.html", http.StatusBadGateway, gin.H{"Title": "Machines", "Page": "machines", "Error": err.Error()})
-		return
-	}
-	h.render(c, "machines.html", http.StatusOK, gin.H{"Title": "Machines", "Page": "machines", "Machines": machines})
+	h.render(c, "machines.html", http.StatusOK, gin.H{"Title": "Machines", "Page": "machines"})
 }
 
 // MachinesListJSON is the JSON variant of the VM list for the frontend.
@@ -35,18 +32,15 @@ func (h *Handlers) MachinesListJSON(c *gin.Context) {
 	c.JSON(http.StatusOK, machines)
 }
 
-// MachineDetail renders the detail page for one VM — the "vmm info" /
-// "vmm inspect" equivalent, with power-control actions.
+// MachineDetail renders the master-detail VM page with a preselected VM
+// (shareable /machines/{name} URLs and the redirect target of power-control
+// actions). Data still comes from the JSON API client-side.
 func (h *Handlers) MachineDetail(c *gin.Context) {
-	name := c.Param("name")
-	detail, err := h.getMachine(c.Request.Context(), name)
-	if err != nil {
-		h.render(c, "machine_detail.html", http.StatusNotFound,
-			gin.H{"Title": name, "Page": "machines", "Name": name, "Error": err.Error()})
-		return
+	data := gin.H{"Title": "Machines", "Page": "machines", "Selected": c.Param("name")}
+	if err := c.Query("error"); err != "" {
+		data["Error"] = err
 	}
-	h.render(c, "machine_detail.html", http.StatusOK,
-		gin.H{"Title": name, "Page": "machines", "Name": name, "Machine": detail})
+	h.render(c, "machines.html", http.StatusOK, data)
 }
 
 // MachineDetailJSON returns the full description of one VM.
