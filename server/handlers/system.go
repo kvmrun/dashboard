@@ -13,7 +13,7 @@ import (
 // SystemIndex renders the main dashboard page with daemon configuration.
 func (h *Handlers) SystemIndex(c *gin.Context) {
 	h.render(c, "system.html", http.StatusOK,
-		gin.H{"Title": "System", "Info": h.systemInfo(c)})
+		gin.H{"Title": "Overview", "Page": "home", "Info": h.systemInfo(c)})
 }
 
 // SystemJSON returns daemon/host information — the system service equivalent.

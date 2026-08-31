@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/0xef53/kvmrun-dashboard/internal/daemon"
+	"github.com/0xef53/kvmrun-dashboard/internal/version"
 	"github.com/0xef53/kvmrun-dashboard/server/middleware"
 )
 
@@ -21,9 +22,12 @@ type Handlers struct {
 // render sends a rendered page to the client. page is the key of the page
 // template (e.g. "machines.html"); each page template is a separate set
 // parsed together with the shared layout. The authenticated username (set
-// by middleware.RequireAuth) is injected so the layout nav can show it.
+// by middleware.RequireAuth) is injected so the layout nav can show it,
+// together with the version strings for the header chips.
 func (h *Handlers) render(c *gin.Context, page string, status int, data gin.H) {
 	data["User"] = c.GetString(middleware.UserKey)
+	data["KvmrunVersion"] = version.Kvmrun
+	data["DashboardVersion"] = version.Dashboard
 	c.Status(status)
 	c.Header("Content-Type", "text/html; charset=utf-8")
 

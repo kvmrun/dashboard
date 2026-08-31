@@ -7,6 +7,7 @@
     --accent: #4f8ff7;
     --error: #f76e6e;
     --border: #343a42;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 }
 
 * {
@@ -20,7 +21,8 @@ body {
     color: var(--fg);
 }
 
-nav {
+/* Header — two tiers: brand + version chips (top), section nav (bottom). */
+.header-top {
     display: flex;
     align-items: center;
     gap: 1.5rem;
@@ -28,18 +30,55 @@ nav {
     border-bottom: 1px solid var(--border);
 }
 
-nav .brand {
+.brand {
     font-weight: 700;
     color: var(--accent);
+    text-decoration: none;
 }
 
-nav a {
+.versions {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0 auto;
+}
+
+.chip {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: #23272e;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1rem 0.5rem;
+    white-space: nowrap;
+}
+
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.4rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.header-nav a {
     color: var(--muted);
     text-decoration: none;
 }
 
-nav a:hover {
+.header-nav a:hover {
     color: var(--fg);
+}
+
+.header-nav a.active {
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+}
+
+.header-nav .divider {
+    width: 1px;
+    height: 1.1rem;
+    background: var(--border);
 }
 
 main {
@@ -95,9 +134,8 @@ button:hover {
     filter: brightness(1.15);
 }
 
-nav .user {
+.user {
     color: var(--muted);
-    margin-left: auto;
 }
 
 .login-page {

@@ -22,10 +22,9 @@ import (
 	"github.com/0xef53/kvmrun-dashboard/internal/auth"
 	"github.com/0xef53/kvmrun-dashboard/internal/config"
 	"github.com/0xef53/kvmrun-dashboard/internal/daemon"
+	"github.com/0xef53/kvmrun-dashboard/internal/version"
 	"github.com/0xef53/kvmrun-dashboard/server"
 )
-
-const version = "0.1.0"
 
 var (
 	pamService = flag.String("pam-service", "login",
@@ -45,7 +44,7 @@ func main() {
 	flag.Parse()
 
 	if err := run(cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "dashboard %s: %v\n", version, err)
+		fmt.Fprintf(os.Stderr, "dashboard %s: %v\n", version.Dashboard, err)
 		os.Exit(1)
 	}
 }

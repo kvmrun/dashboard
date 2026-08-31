@@ -1,7 +1,7 @@
 {{template "layout" .}}
 
 {{define "content"}}
-<h1>System</h1>
+<h1>Overview</h1>
 <table class="detail">
     <tr><th>Dashboard (Go)</th><td>{{.GoVersion}}</td></tr>
     <tr><th>QEMU rootdir</th><td>{{if .Info.QemuRootdir}}{{.Info.QemuRootdir}}{{else}}---{{end}}</td></tr>

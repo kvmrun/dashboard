@@ -19,10 +19,10 @@ import (
 func (h *Handlers) MachinesList(c *gin.Context) {
 	machines, err := h.listMachines(c.Request.Context())
 	if err != nil {
-		h.render(c, "machines.html", http.StatusBadGateway, gin.H{"Title": "Machines", "Error": err.Error()})
+		h.render(c, "machines.html", http.StatusBadGateway, gin.H{"Title": "Machines", "Page": "machines", "Error": err.Error()})
 		return
 	}
-	h.render(c, "machines.html", http.StatusOK, gin.H{"Title": "Machines", "Machines": machines})
+	h.render(c, "machines.html", http.StatusOK, gin.H{"Title": "Machines", "Page": "machines", "Machines": machines})
 }
 
 // MachinesListJSON is the JSON variant of the VM list for the frontend.
@@ -42,11 +42,11 @@ func (h *Handlers) MachineDetail(c *gin.Context) {
 	detail, err := h.getMachine(c.Request.Context(), name)
 	if err != nil {
 		h.render(c, "machine_detail.html", http.StatusNotFound,
-			gin.H{"Title": name, "Name": name, "Error": err.Error()})
+			gin.H{"Title": name, "Page": "machines", "Name": name, "Error": err.Error()})
 		return
 	}
 	h.render(c, "machine_detail.html", http.StatusOK,
-		gin.H{"Title": name, "Name": name, "Machine": detail})
+		gin.H{"Title": name, "Page": "machines", "Name": name, "Machine": detail})
 }
 
 // MachineDetailJSON returns the full description of one VM.

@@ -10,6 +10,12 @@ import (
 	"github.com/0xef53/kvmrun-dashboard/internal/model"
 )
 
+// TasksIndex renders the tasks page — the "vmm tasks" equivalent. The
+// content is a placeholder until the page is built out.
+func (h *Handlers) TasksIndex(c *gin.Context) {
+	h.render(c, "tasks.html", http.StatusOK, gin.H{"Title": "Tasks", "Page": "tasks"})
+}
+
 // TasksListJSON lists long-running operations (migrations, backups)
 // reported by the tasks service.
 func (h *Handlers) TasksListJSON(c *gin.Context) {
