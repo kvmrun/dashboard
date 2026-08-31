@@ -1,6 +1,33 @@
 {{template "layout" .}}
 
 {{define "content"}}
-<h1>Tasks</h1>
-<p class="hint">Under development</p>
+<div class="page-header">
+    <h1>Tasks<span class="live-badge"><span class="live-dot"></span>LIVE</span></h1>
+    <div class="page-controls">
+        <span class="updated-ago" id="tasks-updated-ago"></span>
+        <select id="tasks-refresh">
+            <option value="5">Refresh: 5s</option>
+            <option value="10" selected>Refresh: 10s</option>
+            <option value="30">Refresh: 30s</option>
+        </select>
+        <select id="tasks-page-size">
+            <option value="10">Per page: 10</option>
+            <option value="20" selected>Per page: 20</option>
+            <option value="50">Per page: 50</option>
+        </select>
+    </div>
+</div>
+<table id="tasks">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>State</th>
+        <th>Description</th>
+        <th>Progress</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr><td colspan="4" class="hint">Loading…</td></tr>
+    </tbody>
+</table>
 {{end}}
