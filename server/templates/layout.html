@@ -10,7 +10,14 @@
 <body>
 <header>
     <div class="header-top">
-        <a class="brand" href="/">kvmrun dashboard</a>
+        <a class="brand" href="/">
+            <svg class="brand-logo" viewBox="0 0 22 22" aria-hidden="true">
+                <rect width="22" height="22" rx="6"/>
+                <text x="11" y="16" font-size="13" text-anchor="middle">K</text>
+            </svg>
+            <span class="brand-name">kvmrun</span>
+            <span class="brand-suffix">dashboard</span>
+        </a>
         <div class="versions">
             <span class="chip">kvmrun v{{.KvmrunVersion}}</span>
             <span class="chip">dash v{{.DashboardVersion}}</span>

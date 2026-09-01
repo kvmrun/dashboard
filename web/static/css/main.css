@@ -34,10 +34,39 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
+/* Brand: gray "K" logomark + uppercase wordmark (kvmrun — accent, dashboard — muted). */
 .brand {
-    font-weight: 700;
-    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     text-decoration: none;
+}
+
+.brand-logo {
+    width: 1.375rem;
+    height: 1.375rem;
+    flex: none;
+}
+
+.brand-logo rect {
+    fill: var(--muted);
+}
+
+.brand-logo text {
+    fill: var(--fg);
+    font-weight: 800;
+}
+
+.brand-name {
+    color: var(--accent);
+}
+
+.brand-suffix {
+    color: var(--muted);
 }
 
 .versions {
