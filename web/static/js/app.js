@@ -251,7 +251,7 @@ function initMachines() {
     cards.append(
       statCard("ic-power", "STATE", m.state || "—",
         m.lifetime > 0 ? `up ${fmtDuration(m.lifetime)}` : "", sCls),
-      statCard("ic-mem", "MEMORY", `MiB ${m.mem_actual} / ${m.mem_total}`, "actual/total"),
+      statCard("ic-mem", "MEMORY (in MiB)", `${m.mem_actual} / ${m.mem_total}`, "actual/total"),
       statCard("ic-cpu", "VCPU", `${m.cpus_actual} / ${m.cpus_total}`, "actual/total"),
       statCard("ic-clock", "CPU TIME", "—", "lifetime · not reported yet"),
     );
