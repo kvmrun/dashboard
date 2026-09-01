@@ -35,6 +35,38 @@ type MachineDetail struct {
 	NetIfaceCount int    `json:"net_ifaces"`
 }
 
+// NetworkScheme is one interface scheme of a VM as reported by the network
+// service GetConf (NetworkSchemeOpts), mirroring the per-interface block
+// printed by the "vmm nets" console output.
+type NetworkScheme struct {
+	Ifname string `json:"ifname"`
+	// Type is the scheme type derived from the attrs oneof: routed, bridge,
+	// vxlan or vlan ("manual" when the scheme carries no attrs).
+	Type string `json:"type"`
+	// MTU is the interface MTU; the daemon leaves it 0 when unset and the
+	// console applies a 1500 default, which we mirror here.
+	MTU   uint32   `json:"mtu"`
+	Addrs []string `json:"addrs"`
+
+	Gateway4 string `json:"gateway4,omitempty"`
+	Gateway6 string `json:"gateway6,omitempty"`
+
+	// VLAN scheme attributes.
+	VlanID          uint32 `json:"vlan_id,omitempty"`
+	ParentInterface string `json:"parent_interface,omitempty"`
+
+	// VxLAN scheme attributes.
+	VNI           uint32 `json:"vni,omitempty"`
+	BindInterface string `json:"bind_interface,omitempty"`
+
+	// Router scheme attributes (limits in mbit/s).
+	InLimit  uint32 `json:"in_limit,omitempty"`
+	OutLimit uint32 `json:"out_limit,omitempty"`
+
+	// Bridge scheme attributes.
+	BridgeName string `json:"bridge_name,omitempty"`
+}
+
 // TaskInfo describes a long-running operation (migration, backup) reported
 // by the tasks service.
 type TaskInfo struct {

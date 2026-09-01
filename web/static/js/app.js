@@ -102,10 +102,22 @@ function initMachines() {
   async function loadDetail(name) {
     const seq = ++detailSeq;
     try {
-      const res = await fetch(`/api/v1/machines/${encodeURIComponent(name)}`);
+      const [res, netRes] = await Promise.all([
+        fetch(`/api/v1/machines/${encodeURIComponent(name)}`),
+        fetch(`/api/v1/machines/${encodeURIComponent(name)}/networks`),
+      ]);
       if (seq !== detailSeq || name !== selected) return; // stale response
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      renderDetail(await res.json());
+      // A failed networks fetch does not fail the whole page — the panel
+      // shows the error instead.
+      let schemes = [];
+      let netErr = null;
+      if (netRes.ok) {
+        schemes = (await netRes.json()) || [];
+      } else {
+        netErr = `HTTP ${netRes.status}`;
+      }
+      renderDetail(await res.json(), schemes, netErr);
     } catch (err) {
       if (seq !== detailSeq || name !== selected) return;
       const p = vmEl("p", "error", `Failed to load ${name}: ${err.message}`);
@@ -115,7 +127,47 @@ function initMachines() {
 
 
 
-  function renderDetail(m) {
+  function renderScheme(s) {
+    const block = vmEl("div", "net-scheme");
+    const head = vmEl("div", "net-scheme-head");
+    head.append(
+      vmEl("span", "net-scheme-iface", s.ifname || "?"),
+      vmEl("span", "net-scheme-type", s.type || "unknown"),
+    );
+    block.append(head);
+
+    // Rows mirror the "vmm nets" console output: MTU, addresses,
+    // gateways, then scheme-specific parameters.
+    const rows = vmEl("div", "kv-list");
+    rows.append(kvRow("ic-net", "MTU", String(s.mtu ?? 0)));
+    for (const addr of s.addrs || []) {
+      rows.append(kvRow("ic-net", "Address", addr, "wrap"));
+    }
+    if (s.gateway4) rows.append(kvRow("ic-net", "IPv4 gateway", s.gateway4));
+    if (s.gateway6) rows.append(kvRow("ic-net", "IPv6 gateway", s.gateway6));
+    switch (s.type) {
+      case "routed":
+        if (s.bind_interface) rows.append(kvRow("ic-box", "In/Out device", s.bind_interface));
+        rows.append(kvRow("ic-net", "Incoming limit", `${s.in_limit ?? 0} mbit/s`));
+        rows.append(kvRow("ic-net", "Outgoing limit", `${s.out_limit ?? 0} mbit/s`));
+        break;
+      case "vxlan":
+        if (s.bind_interface) rows.append(kvRow("ic-box", "Tunnel device", s.bind_interface));
+        rows.append(kvRow("ic-net", "VNI", String(s.vni ?? 0)));
+        break;
+      case "vlan":
+        if (s.parent_interface) rows.append(kvRow("ic-box", "Parent device", s.parent_interface));
+        rows.append(kvRow("ic-net", "VLAN ID", String(s.vlan_id ?? 0)));
+        break;
+      case "bridge":
+        if (s.bridge_name) rows.append(kvRow("ic-box", "Bridge device", s.bridge_name));
+        break;
+    }
+    block.append(rows);
+    return block;
+  }
+
+  function renderDetail(m, schemes, netErr) {
     const sCls = vmStateClass(m.state);
 
     // Header: name + colored state pill + runtime meta + power actions.
@@ -167,13 +219,19 @@ function initMachines() {
     );
     cfg.append(cfgTitle, cfgBody);
 
-    // Network panel — stub until the network settings are exposed by the API.
+    // Network panel: one block per interface scheme from the network
+    // service GetConf (the same data the "vmm nets" console prints).
     const net = vmEl("section", "panel-card");
     const netTitle = vmEl("h2", "panel-title");
-    netTitle.append(vmIcon("ic-net"), vmEl("span", null, "Network"), vmEl("span", "stub-tag", "stub"));
-    const netBody = vmEl("div", "kv-list");
-    netBody.append(kvRow("ic-net", "Interfaces", String(m.net_ifaces ?? 0)));
-    netBody.append(vmEl("p", "hint", "Driver, MAC and queue details — coming soon"));
+    netTitle.append(vmIcon("ic-net"), vmEl("span", null, "Network"));
+    const netBody = vmEl("div", "net-schemes");
+    if (netErr) {
+      netBody.append(vmEl("p", "hint", `Failed to load networks: ${netErr}`));
+    } else if (!schemes || schemes.length === 0) {
+      netBody.append(vmEl("p", "hint", "No networks configured"));
+    } else {
+      for (const s of schemes) netBody.append(renderScheme(s));
+    }
     net.append(netTitle, netBody);
 
     // Comments — placeholder, kvmrun has no comment API yet.

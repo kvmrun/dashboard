@@ -97,6 +97,7 @@ func New(cfg Config) *Server {
 		api.GET("/system", h.SystemJSON)
 		api.GET("/machines", h.MachinesListJSON)
 		api.GET("/machines/:name", h.MachineDetailJSON)
+		api.GET("/machines/:name/networks", h.MachineNetworksJSON)
 		api.GET("/tasks", h.TasksListJSON)
 		api.POST("/machines/:name/vnc", h.VNCActivateJSON)
 		// TODO: the remaining domains once their daemon services are wired up:

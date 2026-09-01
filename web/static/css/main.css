@@ -563,6 +563,50 @@ button.btn-small:hover {
     white-space: nowrap;
 }
 
+/* Long values (addresses, gateways) may wrap instead of being elided. */
+.kv-value.wrap {
+    white-space: normal;
+    word-break: break-all;
+}
+
+/* Network panel: one card per interface scheme (GetConf data). */
+.net-schemes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.net-scheme {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.55rem 0.8rem 0.15rem;
+}
+
+.net-scheme-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+}
+
+.net-scheme-iface {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.net-scheme-type {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.05rem 0.5rem;
+}
+
 .stub-tag {
     margin-left: auto;
     font-family: var(--mono);

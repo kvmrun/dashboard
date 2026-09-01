@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	pb_machines "github.com/0xef53/kvmrun/api/services/machines/v2"
+	pb_network "github.com/0xef53/kvmrun/api/services/network/v2"
 	pb_types "github.com/0xef53/kvmrun/api/types/v2"
 
 	"github.com/0xef53/kvmrun-dashboard/internal/model"
@@ -52,6 +53,23 @@ func (h *Handlers) MachineDetailJSON(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, detail)
+}
+
+// MachineNetworksJSON returns the VM's network interface schemes
+// (NetworkService.GetConf) — the same data the "vmm nets" console output
+// prints for the machine.
+func (h *Handlers) MachineNetworksJSON(c *gin.Context) {
+	name := c.Param("name")
+	resp, err := h.Daemon.Network.GetConf(c.Request.Context(), &pb_network.GetConfRequest{Name: name})
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	out := make([]model.NetworkScheme, 0, len(resp.Schemes))
+	for _, s := range resp.Schemes {
+		out = append(out, networkScheme(s))
+	}
+	c.JSON(http.StatusOK, out)
 }
 
 // StartMachine starts a VM ("vmm start").
@@ -150,6 +168,46 @@ func machineSummary(m *pb_types.Machine) model.MachineSummary {
 			s.CPUsTotal = cpu.Total
 			s.CpuPercent = cpu.Quota
 		}
+	}
+	return s
+}
+
+// networkScheme maps a proto NetworkSchemeOpts to the frontend model,
+// following the same rules as the "vmm nets" console output: the scheme
+// type is derived from the attrs oneof and an unset MTU means 1500.
+func networkScheme(o *pb_types.NetworkSchemeOpts) model.NetworkScheme {
+	s := model.NetworkScheme{
+		Ifname:   o.Ifname,
+		MTU:      1500,
+		Addrs:    o.Addrs,
+		Gateway4: o.Gateway4,
+		Gateway6: o.Gateway6,
+	}
+	if o.MTU > 0 {
+		s.MTU = o.MTU
+	}
+	if s.Addrs == nil {
+		s.Addrs = []string{}
+	}
+	switch a := o.Attrs.(type) {
+	case *pb_types.NetworkSchemeOpts_Vlan:
+		s.Type = "vlan"
+		s.VlanID = a.Vlan.VlanID
+		s.ParentInterface = a.Vlan.ParentInterface
+	case *pb_types.NetworkSchemeOpts_Vxlan:
+		s.Type = "vxlan"
+		s.VNI = a.Vxlan.VNI
+		s.BindInterface = a.Vxlan.BindInterface
+	case *pb_types.NetworkSchemeOpts_Router:
+		s.Type = "routed"
+		s.BindInterface = a.Router.BindInterface
+		s.InLimit = a.Router.InLimit
+		s.OutLimit = a.Router.OutLimit
+	case *pb_types.NetworkSchemeOpts_Bridge:
+		s.Type = "bridge"
+		s.BridgeName = a.Bridge.BridgeName
+	default:
+		s.Type = "manual"
 	}
 	return s
 }
