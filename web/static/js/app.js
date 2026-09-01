@@ -88,6 +88,39 @@ function initMachines() {
     return row;
   }
 
+  // Disk sub-row under the "Disks" counter: mono name (full path in the
+  // tooltip), muted details (driver, bootindex) and a kebab ("⋮") button.
+  // The menu is a stub: its only item "clear bitmap" is disabled until the
+  // daemon exposes the action.
+  function diskRow(d) {
+    const row = vmEl("div", "kv-row disk-row");
+    const name = vmEl("span", "disk-name", d.name || d.path);
+    if (d.path) name.title = d.path;
+    const parts = [];
+    if (d.driver) parts.push(d.driver);
+    if (d.bootindex) parts.push(`boot ${d.bootindex}`);
+    row.append(name, vmEl("span", "disk-details", parts.join(" · ")));
+    const kebab = vmEl("button", "kebab-btn");
+    kebab.setAttribute("aria-haspopup", "true");
+    kebab.setAttribute("aria-expanded", "false");
+    kebab.append(vmEl("span", "kebab-dots", "⋮"));
+    const menu = vmEl("div", "disk-menu");
+    const item = vmEl("button", "disk-menu-item", "clear bitmap");
+    item.disabled = true;
+    item.title = "Coming soon";
+    menu.append(item);
+    row.append(kebab, menu);
+    return row;
+  }
+
+  function closeDiskMenus() {
+    for (const menu of detailEl.querySelectorAll(".disk-menu.open")) {
+      menu.classList.remove("open");
+      const kebab = menu.parentElement.querySelector(".kebab-btn");
+      if (kebab) kebab.setAttribute("aria-expanded", "false");
+    }
+  }
+
   function statCard(ic, label, value, sub, valueCls) {
     const card = vmEl("div", "stat-card");
     const top = vmEl("div", "stat-top");
@@ -232,11 +265,14 @@ function initMachines() {
       kvRow("ic-power", "State", m.state || "—", sCls),
       kvRow("ic-mem", "Memory", `${m.mem_actual} / ${m.mem_total} MiB`),
       kvRow("ic-cpu", "vCPU", `${m.cpus_actual} / ${m.cpus_total}${m.cpu_quota ? ` · ${m.cpu_quota}% quota` : ""}`),
+      kvRow("ic-cpu", "vCPU model", m.cpu_model || "—"),
       kvRow("ic-box", "Machine type", m.machine_type || "—"),
-      kvRow("ic-box", "Firmware", m.firmware_image || "—"),
+      kvRow("ic-box", "Firmware image", m.firmware_image || "—"),
+      kvRow("ic-box", "Firmware flash", m.firmware_flash || "—"),
       kvRow("ic-monitor", "VGA", m.vga_type || "—"),
       kvRow("ic-disk", "Disks", String(m.disks ?? 0)),
     );
+    for (const d of m.disk_list || []) cfgBody.append(diskRow(d));
     cfg.append(cfgTitle, cfgBody);
 
     // Network panel: one block per interface scheme from the network
@@ -300,6 +336,23 @@ function initMachines() {
   window.addEventListener("popstate", () => {
     const name = nameFromUrl();
     if (name && name !== selected) select(name, false);
+  });
+  // Kebab menu: click the "⋮" button to toggle its menu; click anywhere else
+  // or press Escape to close. Only one menu is open at a time.
+  document.addEventListener("click", (e) => {
+    const kebab = e.target.closest(".kebab-btn");
+    if (!kebab) {
+      closeDiskMenus();
+      return;
+    }
+    const menu = kebab.nextElementSibling;
+    const willOpen = !menu.classList.contains("open");
+    closeDiskMenus();
+    if (willOpen) menu.classList.add("open");
+    kebab.setAttribute("aria-expanded", String(willOpen));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeDiskMenus();
   });
 
   // Initial load: preselected VM from the URL (or the server-rendered

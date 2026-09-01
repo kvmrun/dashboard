@@ -24,7 +24,13 @@ type MachineDetail struct {
 	PID           uint32 `json:"pid,omitempty"`
 	Lifetime      int64  `json:"lifetime,omitempty"`
 	MachineType   string `json:"machine_type,omitempty"`
+	// CpuModel is the CPU model string (MachineOpts.CPU.Model), e.g.
+	// "Broadwell-IBRS,+pcid".
+	CpuModel      string `json:"cpu_model,omitempty"`
 	FirmwareImage string `json:"firmware_image,omitempty"`
+	// FirmwareFlash is the firmware flash (EFI vars) path
+	// (MachineOpts.Firmware.Flash).
+	FirmwareFlash string `json:"firmware_flash,omitempty"`
 	VGAType       string `json:"vga_type,omitempty"`
 	MemActual     uint32 `json:"mem_actual"`
 	MemTotal      uint32 `json:"mem_total"`
@@ -33,6 +39,25 @@ type MachineDetail struct {
 	CPUQuota      uint32 `json:"cpu_quota,omitempty"`
 	DiskCount     int    `json:"disks"`
 	NetIfaceCount int    `json:"net_ifaces"`
+	// Disks is the list of storage drives (MachineOpts.Storage), mirroring
+	// the "Storage" block of the console output.
+	Disks []DiskInfo `json:"disk_list,omitempty"`
+}
+
+// DiskInfo is one storage drive of a VM (MachineOpts.Disk), mirroring one
+// line of the "Storage" block in the "vmm inspect" console output. The drive
+// size the console prints is not available in the daemon API, so it is not
+// exposed here.
+type DiskInfo struct {
+	// Name is the base name of the path — the identifier the console
+	// prints as the drive label.
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	Driver    string `json:"driver,omitempty"`
+	IopsRd    uint32 `json:"iops_rd,omitempty"`
+	IopsWr    uint32 `json:"iops_wr,omitempty"`
+	Bootindex uint32 `json:"bootindex,omitempty"`
+	Addr      string `json:"addr,omitempty"`
 }
 
 // NetworkScheme is one interface scheme of a VM as reported by the network

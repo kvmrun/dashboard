@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -228,14 +229,41 @@ func machineDetail(m *pb_types.Machine) *model.MachineDetail {
 	}
 	if opts := m.Config; opts != nil {
 		d.MachineType = opts.MachineType
+		if cpu := opts.CPU; cpu != nil {
+			d.CpuModel = cpu.Model
+		}
 		if fw := opts.Firmware; fw != nil {
 			d.FirmwareImage = fw.Image
+			d.FirmwareFlash = fw.Flash
 		}
 		if vga := opts.VGA; vga != nil {
 			d.VGAType = vga.Type
 		}
 		d.DiskCount = len(opts.Storage)
 		d.NetIfaceCount = len(opts.Network)
+		d.Disks = diskInfoList(opts.Storage)
 	}
 	return d
+}
+
+// diskInfoList maps proto storage drives to the frontend model. The drive
+// name is the base name of the path — the same identifier the "vmm inspect"
+// console prints as the drive label.
+func diskInfoList(storage []*pb_types.MachineOpts_Disk) []model.DiskInfo {
+	out := make([]model.DiskInfo, 0, len(storage))
+	for _, s := range storage {
+		if s == nil {
+			continue
+		}
+		out = append(out, model.DiskInfo{
+			Name:      path.Base(s.Path),
+			Path:      s.Path,
+			Driver:    s.Driver,
+			IopsRd:    s.IopsRd,
+			IopsWr:    s.IopsWr,
+			Bootindex: s.Bootindex,
+			Addr:      s.Addr,
+		})
+	}
+	return out
 }

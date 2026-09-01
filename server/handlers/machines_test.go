@@ -62,6 +62,48 @@ func TestMachinesPagesRender(t *testing.T) {
 	}
 }
 
+// TestDiskInfoList checks the proto -> model mapping for storage drives:
+// the drive name is the base name of the path (the same identifier the
+// "vmm inspect" console prints) and all MachineOpts_Disk fields are carried
+// over.
+func TestDiskInfoList(t *testing.T) {
+	got := diskInfoList([]*pb_types.MachineOpts_Disk{
+		{
+			Path:      "/etc/kvmrun/vm_bd8c5c87/st_bd8c5c87",
+			Driver:    "virtio-blk-pci",
+			IopsRd:    100,
+			IopsWr:    200,
+			Bootindex: 0,
+			Addr:      "virtio0",
+		},
+		{
+			Path:   "/etc/kvmrun/vm_bd8c5c87/vl_3b90fac4",
+			Driver: "virtio-blk-pci",
+		},
+	})
+
+	want := []model.DiskInfo{
+		{
+			Name:      "st_bd8c5c87",
+			Path:      "/etc/kvmrun/vm_bd8c5c87/st_bd8c5c87",
+			Driver:    "virtio-blk-pci",
+			IopsRd:    100,
+			IopsWr:    200,
+			Bootindex: 0,
+			Addr:      "virtio0",
+		},
+		{
+			Name:   "vl_3b90fac4",
+			Path:   "/etc/kvmrun/vm_bd8c5c87/vl_3b90fac4",
+			Driver: "virtio-blk-pci",
+		},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("diskInfoList() = %+v, want %+v", got, want)
+	}
+}
+
 // TestNetworkScheme checks that the proto -> model mapping for
 // NetworkSchemeOpts follows the same rules as the "vmm nets" output.
 func TestNetworkScheme(t *testing.T) {

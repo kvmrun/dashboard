@@ -633,6 +633,99 @@ button.btn-small:hover {
     word-break: break-all;
 }
 
+/* Disk sub-rows under the "Disks" counter: a guide line on the left, mono
+   name + muted details, kebab overflow button at the right edge. */
+.disk-row {
+    grid-template-columns: 1fr auto auto;
+    border-bottom: none;
+    padding-left: 1.55rem;
+    position: relative;
+}
+
+.disk-row::before {
+    content: "";
+    position: absolute;
+    left: 0.85rem;
+    top: 0;
+    bottom: 0;
+    border-left: 1px solid var(--border);
+}
+
+.disk-name {
+    font-family: var(--mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.disk-details {
+    font-family: var(--mono);
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+button.kebab-btn {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    flex: none;
+}
+
+button.kebab-btn:hover,
+button.kebab-btn[aria-expanded="true"] {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.kebab-dots {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+/* Disk overflow menu: an elevated card anchored to the row's right edge
+   (the kebab button). Items are stubs (disabled) until the daemon exposes
+   the actions. */
+.disk-menu {
+    position: absolute;
+    top: calc(100% - 0.25rem);
+    right: 0;
+    min-width: 150px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+    padding: 0.3rem;
+    display: none;
+    z-index: 10;
+}
+
+.disk-menu.open {
+    display: block;
+}
+
+button.disk-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    padding: 0.35rem 0.55rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
 /* Network panel: one card per interface scheme (GetConf data). */
 .net-schemes {
     display: flex;
