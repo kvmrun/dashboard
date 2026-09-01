@@ -127,13 +127,24 @@ function initMachines() {
 
 
 
+  // Network scheme type icon (colors are set by .net-type-* CSS classes).
+  const NET_TYPE_ICONS = {
+    bridge: "ic-bridge",
+    routed: "ic-routed",
+    vxlan: "ic-vxlan",
+    vlan: "ic-vlan",
+  };
+
   function renderScheme(s) {
+    const type = (s.type || "unknown").toLowerCase();
     const block = vmEl("div", "net-scheme");
     const head = vmEl("div", "net-scheme-head");
-    head.append(
-      vmEl("span", "net-scheme-iface", s.ifname || "?"),
-      vmEl("span", "net-scheme-type", s.type || "unknown"),
-    );
+    head.append(vmEl("span", "net-scheme-iface", s.ifname || "?"));
+    const typeEl = vmEl("span", `net-scheme-type net-type-${type}`);
+    const iconId = NET_TYPE_ICONS[type];
+    if (iconId) typeEl.append(vmIcon(iconId));
+    typeEl.append(vmEl("span", null, type.toUpperCase()));
+    head.append(typeEl);
     block.append(head);
 
     // Rows mirror the "vmm nets" console output: MTU, addresses,
@@ -170,36 +181,45 @@ function initMachines() {
   function renderDetail(m, schemes, netErr) {
     const sCls = vmStateClass(m.state);
 
-    // Header: name + colored state pill + runtime meta + power actions.
+    // Header: name + colored state pill + power actions in one row
+    // (running VM: Stop/Restart/Reset, otherwise: Start) + runtime meta.
     const head = vmEl("div", "vm-head");
     const titleRow = vmEl("div", "vm-title-row");
     titleRow.append(vmEl("h1", "vm-title", m.name));
     const pill = vmEl("span", `state-pill ${sCls}`);
     pill.append(vmEl("span", "pill-dot"), vmEl("span", null, m.state || "UNKNOWN"));
     titleRow.append(pill);
-    const metaParts = [];
-    if (m.pid) metaParts.push(`PID ${m.pid}`);
-    if (m.lifetime > 0) metaParts.push(`up ${fmtDuration(m.lifetime)}`);
-    head.append(titleRow, vmEl("p", "vm-meta", metaParts.length ? metaParts.join("  ·  ") : "no runtime data"));
 
+    const running = (m.state || "").toLowerCase() === "running";
     const actions = vmEl("div", "vm-actions");
-    for (const act of ["start", "stop", "restart", "reset"]) {
+    for (const act of running ? ["stop", "restart", "reset"] : ["start"]) {
       const form = vmEl("form", "inline");
       form.method = "post";
       form.action = `/machines/${encodeURIComponent(m.name)}/${act}`;
       form.append(vmEl("button", "btn-small", act[0].toUpperCase() + act.slice(1)));
       actions.append(form);
     }
-    head.append(actions);
+    // Console: the daemon has no console endpoint yet, so the button is a
+    // placeholder until one is wired up.
+    const consoleBtn = vmEl("button", "btn-small btn-icon");
+    consoleBtn.disabled = true;
+    consoleBtn.title = "Console is not available yet";
+    consoleBtn.append(vmIcon("ic-terminal"), vmEl("span", null, "Console"));
+    actions.append(consoleBtn);
+    titleRow.append(actions);
+
+    const metaParts = [];
+    if (m.pid) metaParts.push(`PID ${m.pid}`);
+    if (m.lifetime > 0) metaParts.push(`up ${fmtDuration(m.lifetime)}`);
+    head.append(titleRow, vmEl("p", "vm-meta", metaParts.length ? metaParts.join("  ·  ") : "no runtime data"));
 
     // Stat cards. CPU time is a placeholder: the daemon does not report it yet.
     const cards = vmEl("div", "stat-cards");
     cards.append(
       statCard("ic-power", "STATE", m.state || "—",
-        m.lifetime > 0 ? `up ${fmtDuration(m.lifetime)}` : "not running", sCls),
-      statCard("ic-mem", "MEMORY", `${m.mem_actual} / ${m.mem_total}`, "MiB"),
-      statCard("ic-cpu", "VCPU", `${m.cpus_actual} / ${m.cpus_total}`,
-        m.cpu_quota ? `quota ${m.cpu_quota}%` : "no quota"),
+        m.lifetime > 0 ? `up ${fmtDuration(m.lifetime)}` : "", sCls),
+      statCard("ic-mem", "MEMORY", `MiB ${m.mem_actual} / ${m.mem_total}`, "actual/total"),
+      statCard("ic-cpu", "VCPU", `${m.cpus_actual} / ${m.cpus_total}`, "actual/total"),
       statCard("ic-clock", "CPU TIME", "—", "lifetime · not reported yet"),
     );
 
@@ -243,10 +263,14 @@ function initMachines() {
     box.append(vmEl("p", "hint comment-note", "kvmrun has no comment API yet — placeholder"));
     com.append(comTitle, box);
 
+    // Two columns: Configuration + Comments stacked on the left (same
+    // width), Network on the right — it can grow in height freely.
     const panels = vmEl("div", "vm-panels");
-    panels.append(cfg, net);
+    const col = vmEl("div", "vm-panels-col");
+    col.append(cfg, com);
+    panels.append(col, net);
 
-    detailEl.replaceChildren(head, cards, panels, com);
+    detailEl.replaceChildren(head, cards, panels);
   }
 
   async function loadList() {

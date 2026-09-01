@@ -411,6 +411,7 @@ main:has(.vm-master) {
 .vm-title-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.75rem;
 }
 
@@ -449,8 +450,32 @@ main:has(.vm-master) {
 
 .vm-actions {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
-    margin-top: 0.2rem;
+    margin-left: auto;
+}
+
+/* Small buttons that carry an icon (e.g. Console). */
+button.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+button.btn-icon .ic {
+    width: 14px;
+    height: 14px;
+}
+
+button.btn-small:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+button.btn-small:disabled:hover {
+    border-color: var(--border);
+    color: var(--fg);
+    filter: none;
 }
 
 button.btn-small {
@@ -506,6 +531,16 @@ button.btn-small:hover {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
+    align-items: start;
+}
+
+/* Left column: Configuration on top, Comments below (same width), so the
+   Network panel on the right can grow in height. */
+.vm-panels-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
 }
 
 .panel-card {
@@ -596,16 +631,28 @@ button.btn-small:hover {
     font-size: 0.85rem;
 }
 
+/* Scheme type: icon + colored text (color per scheme type, see .net-type-*). */
 .net-scheme-type {
     margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 700;
     letter-spacing: 0.05em;
     color: var(--muted);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 0.05rem 0.5rem;
 }
+
+.net-scheme-type .ic {
+    width: 14px;
+    height: 14px;
+}
+
+.net-type-bridge { color: var(--ok); }
+.net-type-routed { color: var(--accent); }
+.net-type-vxlan { color: var(--migrating); }
+.net-type-vlan { color: var(--warn); }
 
 .stub-tag {
     margin-left: auto;
