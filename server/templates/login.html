@@ -7,16 +7,25 @@
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
 <body class="login-page">
-<form class="login-box" method="post" action="/login">
-    <h1>kvmrun dashboard</h1>
-    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
-    <label>Username
-        <input type="text" name="username" autofocus required>
-    </label>
-    <label>Password
-        <input type="password" name="password" required>
-    </label>
-    <button type="submit">Log in</button>
-</form>
+<div class="login-shell">
+    <div class="brand">
+        <svg class="brand-logo" viewBox="0 0 22 22" aria-hidden="true">
+            <rect width="22" height="22" rx="6"/>
+            <text x="11" y="16" font-size="13" text-anchor="middle">K</text>
+        </svg>
+        <span class="brand-name">kvmrun</span>
+        <span class="brand-suffix">dashboard</span>
+    </div>
+    <form class="login-box" method="post" action="/login">
+        {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+        <label>Username
+            <input type="text" name="username" autofocus required>
+        </label>
+        <label>Password
+            <input type="password" name="password" required>
+        </label>
+        <button type="submit">Log in</button>
+    </form>
+</div>
 </body>
 </html>

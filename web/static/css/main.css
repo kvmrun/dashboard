@@ -190,10 +190,12 @@ button:hover {
     width: 400px;
 }
 
-.login-box h1 {
-    font-size: 1.2rem;
-    margin: 0 0 0.5rem;
-    text-align: center;
+/* Brand above the form card: same .brand as the header, centered. */
+.login-shell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.75rem;
 }
 
 .login-box label {
