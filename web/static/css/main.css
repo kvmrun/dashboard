@@ -11,6 +11,10 @@
     --migrating: #b58ff7;
     --error: #f76e6e;
     --border: #343a42;
+    /* Dropdown menus float above panels: a lighter bg + border so they read
+       as a separate layer instead of blending into the card behind them. */
+    --menu-bg: #2a303a;
+    --menu-border: #454d59;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 }
 
@@ -701,10 +705,10 @@ button.kebab-btn[aria-expanded="true"] {
     top: calc(100% - 0.25rem);
     right: 0;
     min-width: 150px;
-    background: var(--panel);
-    border: 1px solid var(--border);
+    background: var(--menu-bg);
+    border: 1px solid var(--menu-border);
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+    box-shadow: 0 8px 20px rgb(0 0 0 / 0.5);
     padding: 0.3rem;
     display: none;
     z-index: 10;
@@ -724,6 +728,73 @@ button.disk-menu-item {
     padding: 0.35rem 0.55rem;
     font-family: var(--mono);
     font-size: 0.72rem;
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+/* More overflow button: slightly separated from the main action group (an
+   extra 0.5rem on top of the .vm-actions gap) with a caret; opens
+   .more-menu. */
+.vm-more {
+    position: relative;
+    margin-left: 0.5rem;
+}
+
+.vm-more .btn-small {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* Downward caret that follows the button's text color (accent on hover). */
+.more-caret {
+    width: 0;
+    height: 0;
+    border-left: 0.25rem solid transparent;
+    border-right: 0.25rem solid transparent;
+    border-top: 0.3rem solid currentColor;
+}
+
+/* More overflow menu: same elevated card as .disk-menu, anchored to the
+   button's right edge. Items are stubs (disabled) until the daemon exposes
+   the actions. */
+.more-menu {
+    position: absolute;
+    top: calc(100% + 0.375rem);
+    right: 0;
+    min-width: 11rem;
+    background: var(--menu-bg);
+    border: 1px solid var(--menu-border);
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgb(0 0 0 / 0.5);
+    padding: 0.3rem;
+    display: none;
+    z-index: 10;
+}
+
+.more-menu.open {
+    display: block;
+}
+
+button.more-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    padding: 0.35rem 0.55rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--fg);
+    cursor: pointer;
+}
+
+button.more-menu-item:hover:not(:disabled) {
+    background: #2b313b;
+}
+
+button.more-menu-item:disabled {
     color: var(--muted);
     cursor: not-allowed;
 }

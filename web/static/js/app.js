@@ -113,11 +113,11 @@ function initMachines() {
     return row;
   }
 
-  function closeDiskMenus() {
-    for (const menu of detailEl.querySelectorAll(".disk-menu.open")) {
+  function closeDropdownMenus() {
+    for (const menu of detailEl.querySelectorAll(".disk-menu.open, .more-menu.open")) {
       menu.classList.remove("open");
-      const kebab = menu.parentElement.querySelector(".kebab-btn");
-      if (kebab) kebab.setAttribute("aria-expanded", "false");
+      const trigger = menu.parentElement.querySelector(".kebab-btn, .vm-more .btn-small");
+      if (trigger) trigger.setAttribute("aria-expanded", "false");
     }
   }
 
@@ -239,6 +239,22 @@ function initMachines() {
     consoleBtn.title = "Console is not available yet";
     consoleBtn.append(vmIcon("ic-terminal"), vmEl("span", null, "Console"));
     actions.append(consoleBtn);
+    // More: slightly separated overflow button (Migrate / Re-build CI-drive).
+    // Items are stubs until the daemon exposes the actions.
+    const moreWrap = vmEl("div", "vm-more");
+    const moreBtn = vmEl("button", "btn-small");
+    moreBtn.setAttribute("aria-haspopup", "true");
+    moreBtn.setAttribute("aria-expanded", "false");
+    moreBtn.append(vmEl("span", "more-label", "More"), vmEl("span", "more-caret"));
+    const moreMenu = vmEl("div", "more-menu");
+    for (const label of ["Migrate", "Re-build CI-drive"]) {
+      const item = vmEl("button", "more-menu-item", label);
+      item.disabled = true;
+      item.title = "Coming soon";
+      moreMenu.append(item);
+    }
+    moreWrap.append(moreBtn, moreMenu);
+    actions.append(moreWrap);
     titleRow.append(actions);
 
     const metaParts = [];
@@ -337,22 +353,25 @@ function initMachines() {
     const name = nameFromUrl();
     if (name && name !== selected) select(name, false);
   });
-  // Kebab menu: click the "⋮" button to toggle its menu; click anywhere else
-  // or press Escape to close. Only one menu is open at a time.
+  // Dropdown menus (disk kebab, More): click a trigger to toggle its menu;
+  // click anywhere else or press Escape to close. Only one menu is open at a
+  // time.
   document.addEventListener("click", (e) => {
     const kebab = e.target.closest(".kebab-btn");
-    if (!kebab) {
-      closeDiskMenus();
+    const moreBtn = e.target.closest(".vm-more .btn-small");
+    const trigger = kebab || moreBtn;
+    if (!trigger) {
+      closeDropdownMenus();
       return;
     }
-    const menu = kebab.nextElementSibling;
+    const menu = trigger.nextElementSibling;
     const willOpen = !menu.classList.contains("open");
-    closeDiskMenus();
+    closeDropdownMenus();
     if (willOpen) menu.classList.add("open");
-    kebab.setAttribute("aria-expanded", String(willOpen));
+    trigger.setAttribute("aria-expanded", String(willOpen));
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeDiskMenus();
+    if (e.key === "Escape") closeDropdownMenus();
   });
 
   // Initial load: preselected VM from the URL (or the server-rendered
