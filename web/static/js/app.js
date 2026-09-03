@@ -160,6 +160,142 @@ function initMachines() {
 
 
 
+  // VNC console (concept 10-final): while open, the detail blocks under the
+  // VM head (stat cards and panels) are replaced by the embedded noVNC
+  // client. The Console and More buttons are hidden; the console is closed
+  // either by the "Back to details" button or automatically when the VM
+  // stops.
+  let consoleOpen = false;
+  let consoleEl = null;
+  let savedChildren = [];
+  let consoleMsgHandler = null;
+  let statePollTimer = null;
+
+  // consoleUrl builds the noVNC page URL: autoconnect with the WS proxy as
+  // the "path" (noVNC resolves it against the page URL); the password goes
+  // in the fragment — noVNC reads it from there and the fragment is never
+  // sent to the server or written to logs.
+  function consoleUrl(name, reqs) {
+    const params = new URLSearchParams({
+      autoconnect: "1",
+      resize: "scale",
+      path: `/api/v1/machines/${encodeURIComponent(name)}/vnc-ws?port=${reqs.port}`,
+    });
+    return `/novnc/vnc.html?${params}#password=${encodeURIComponent(reqs.password || "")}`;
+  }
+
+  async function openConsole(m) {
+    if (consoleOpen) return;
+    try {
+      const res = await fetch(`/api/v1/machines/${encodeURIComponent(m.name)}/vnc`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const reqs = await res.json();
+      if (!reqs || !reqs.port) throw new Error("no VNC port in the response");
+      showConsole(m, reqs);
+    } catch (err) {
+      console.error("failed to open VNC console:", err);
+      const p = vmEl("p", "error", `Failed to open console: ${err.message}`);
+      detailEl.prepend(p);
+      setTimeout(() => p.remove(), 5000);
+    }
+  }
+
+  function showConsole(m, reqs) {
+    const head = detailEl.querySelector(".vm-head");
+
+    const strip = vmEl("div", "vm-console-strip");
+    const back = vmEl("button", "vm-console-back", "\u2190 Back to details");
+    back.addEventListener("click", () => closeConsole());
+    const addr = vmEl("span", "vm-console-addr mono", `127.0.0.1:${reqs.port}`);
+    const status = vmEl("span", "vm-console-status", "Connecting\u2026");
+    strip.append(back, addr, status);
+
+    const frame = document.createElement("iframe");
+    frame.className = "vm-console-frame";
+    frame.src = consoleUrl(m.name, reqs);
+
+    consoleEl = vmEl("div", "vm-console");
+    consoleEl.append(strip, frame);
+
+    // The embedded noVNC relays its connect/disconnect events here.
+    consoleMsgHandler = (e) => {
+      if (e.source !== frame.contentWindow) return;
+      if (!e.data || e.data.type !== "novnc") return;
+      const connected = e.data.state === "connect";
+      status.textContent = connected ? "Connected" : "Disconnected";
+      status.classList.toggle("vm-console-status-ok", connected);
+      status.classList.toggle("vm-console-status-off", !connected);
+    };
+    window.addEventListener("message", consoleMsgHandler);
+
+    // Keep the VM head, hide the Console/More buttons, and swap the rest
+    // of the detail content for the console.
+    const actions = head ? head.querySelector(".vm-actions") : null;
+    if (actions) {
+      for (const child of actions.children) {
+        if (child.classList.contains("btn-icon") || child.classList.contains("vm-more")) {
+          child.classList.add("vm-console-hidden");
+        }
+      }
+    }
+    savedChildren = [];
+    for (const child of [...detailEl.children]) {
+      if (child !== head) {
+        savedChildren.push(child);
+        child.remove();
+      }
+    }
+    detailEl.append(consoleEl);
+    consoleOpen = true;
+
+    // The detail pane is not polled, so while the console is open poll the
+    // VM state and close the console automatically when the VM stops.
+    stopStatePolling();
+    statePollTimer = setInterval(async () => {
+      if (!consoleOpen) return stopStatePolling();
+      try {
+        const res = await fetch(`/api/v1/machines/${encodeURIComponent(m.name)}`);
+        if (!res.ok) return;
+        const d = await res.json();
+        if ((d.state || "").toLowerCase() !== "running") {
+          closeConsole();
+          loadDetail(m.name);
+        }
+      } catch (err) {
+        // Transient fetch error — keep the console open.
+      }
+    }, 5000);
+  }
+
+  function closeConsole() {
+    if (!consoleOpen) return;
+    consoleOpen = false;
+    stopStatePolling();
+    if (consoleMsgHandler) {
+      window.removeEventListener("message", consoleMsgHandler);
+      consoleMsgHandler = null;
+    }
+    if (consoleEl) {
+      consoleEl.remove();
+      consoleEl = null;
+    }
+    for (const child of savedChildren) detailEl.append(child);
+    savedChildren = [];
+    const actions = detailEl.querySelector(".vm-head .vm-actions");
+    if (actions) {
+      for (const child of actions.children) child.classList.remove("vm-console-hidden");
+    }
+  }
+
+  function stopStatePolling() {
+    if (statePollTimer) {
+      clearInterval(statePollTimer);
+      statePollTimer = null;
+    }
+  }
+
   // Network scheme type icon (colors are set by .net-type-* CSS classes).
   const NET_TYPE_ICONS = {
     bridge: "ic-bridge",
@@ -212,6 +348,9 @@ function initMachines() {
   }
 
   function renderDetail(m, schemes, netErr) {
+    // A fresh render rebuilds the head and blocks from scratch, so an open
+    // VNC console (if any) is torn down first.
+    closeConsole();
     const sCls = vmStateClass(m.state);
 
     // Header: name + colored state pill + power actions in one row
@@ -232,11 +371,15 @@ function initMachines() {
       form.append(vmEl("button", "btn-small", act[0].toUpperCase() + act.slice(1)));
       actions.append(form);
     }
-    // Console: the daemon has no console endpoint yet, so the button is a
-    // placeholder until one is wired up.
+    // Console: opens the embedded noVNC client that reaches the VM's local
+    // VNC server through the dashboard's WS proxy. Available only for
+    // running VMs (VNC requires the VM to be up).
     const consoleBtn = vmEl("button", "btn-small btn-icon");
-    consoleBtn.disabled = true;
-    consoleBtn.title = "Console is not available yet";
+    if (!running) {
+      consoleBtn.disabled = true;
+      consoleBtn.title = "Console is available only for running VMs";
+    }
+    consoleBtn.addEventListener("click", () => openConsole(m));
     consoleBtn.append(vmIcon("ic-terminal"), vmEl("span", null, "Console"));
     actions.append(consoleBtn);
     // More: slightly separated overflow button (Migrate / Re-build CI-drive).

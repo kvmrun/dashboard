@@ -75,4 +75,10 @@ Dashboard подключается к демону с теми же настро
 - Действия: Start/Stop/Restart/Reset (кнопки на страницах), VNC-активация
   (`POST /api/v1/machines/:name/vnc`), задачи (`GET /api/v1/tasks`),
   конфиг демона (`GET /api/v1/system`) — работают.
+- VNC-консоль на странице ВМ (концепт 10): встроенный noVNC v1.7.0
+  (embed в `web/novnc`, отдаётся на `/novnc/*`) и WS-прокси
+  `GET /api/v1/machines/:name/vnc-ws?port=N` (mini-websockify, без внешнего
+  websockify; дайлит `127.0.0.2:<port>` — дефолтный `VNCHost` демона — с
+  фолбэком на `127.0.0.1`). Консоль открывается для RUNNING-машин, пароль
+  идёт во fragment URL, при остановке ВМ консоль закрывается автоматически.
 - TODO: storage (диски), network, cloudinit, hardware.

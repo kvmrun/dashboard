@@ -15,6 +15,7 @@ import (
 	"github.com/0xef53/kvmrun-dashboard/server/handlers"
 	"github.com/0xef53/kvmrun-dashboard/server/middleware"
 	"github.com/0xef53/kvmrun-dashboard/server/templates"
+	"github.com/0xef53/kvmrun-dashboard/web/novnc"
 	"github.com/0xef53/kvmrun-dashboard/web/static"
 )
 
@@ -86,6 +87,14 @@ func New(cfg Config) *Server {
 	engine.GET("/machines/:name", h.MachineDetail)
 	engine.GET("/tasks", h.TasksIndex)
 	engine.GET("/top", h.TopIndex)
+
+	// Embedded noVNC client (v1.7.0) for the VNC console on the machine
+	// detail page. It reaches the VM's VNC server through the
+	// /api/v1/machines/{name}/vnc-ws proxy below.
+	engine.GET("/novnc/*filepath",
+		gin.WrapH(http.StripPrefix("/novnc/", http.FileServer(http.FS(novnc.FS)))),
+	)
+
 	engine.POST("/machines/:name/start", h.StartMachine)
 	engine.POST("/machines/:name/stop", h.StopMachine)
 	engine.POST("/machines/:name/restart", h.RestartMachine)
@@ -100,6 +109,9 @@ func New(cfg Config) *Server {
 		api.GET("/machines/:name/networks", h.MachineNetworksJSON)
 		api.GET("/tasks", h.TasksListJSON)
 		api.POST("/machines/:name/vnc", h.VNCActivateJSON)
+		// WebSocket proxy (mini websockify) between the embedded noVNC
+		// client and the VM's local VNC server.
+		api.GET("/machines/:name/vnc-ws", h.VNCProxyWS)
 		// TODO: the remaining domains once their daemon services are wired up:
 		//   api.GET("/machines/:name/disks", h.DisksListJSON)   // storage
 		//   api.GET("/network", h.NetworkListJSON)              // network

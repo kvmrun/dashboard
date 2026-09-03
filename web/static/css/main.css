@@ -911,3 +911,78 @@ button.more-menu-item:disabled {
         grid-template-columns: 1fr;
     }
 }
+
+/* VNC console (machines detail, concept 10-final): the noVNC client takes
+   over the detail pane below the VM head. The head stays visible with the
+   power buttons; the Console/More buttons are hidden via .vm-console-hidden
+   while the console is open. */
+.vm-console {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Top strip: "← Back to details" + VNC endpoint + connection indicator. */
+.vm-console-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0.75rem;
+    background: #262b33;
+    border-bottom: 1px solid var(--border);
+}
+
+.vm-console-back {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.vm-console-back:hover {
+    background: rgb(79 143 247 / 0.12);
+}
+
+.vm-console-addr {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.vm-console-status {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--warn);
+}
+
+.vm-console-status-ok {
+    color: var(--ok);
+}
+
+.vm-console-status-off {
+    color: var(--error);
+}
+
+/* The noVNC client fills the remaining space. */
+.vm-console-frame {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    border: none;
+    display: block;
+    background: #000;
+}
+
+/* Console/More buttons are hidden while the VNC console is open. */
+.vm-console-hidden {
+    display: none;
+}
