@@ -21,4 +21,3 @@ func TestEmbeddedFiles(t *testing.T) {
 		}
 	}
 }
-

@@ -9,3 +9,7 @@ vendor/
 .idea/
 .vscode/
 .DS_Store
+
+# Cert folder
+cert/*.crt
+cert/*.key

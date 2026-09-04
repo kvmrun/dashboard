@@ -160,16 +160,21 @@ function initMachines() {
 
 
 
-  // VNC console (concept 10-final): while open, the detail blocks under the
-  // VM head (stat cards and panels) are replaced by the embedded noVNC
-  // client. The Console and More buttons are hidden; the console is closed
-  // either by the "Back to details" button or automatically when the VM
-  // stops.
+  // Consoles (VNC and the agent built-in SSH): while open, the detail
+  // blocks under the VM head (stat cards and panels) are replaced by the
+  // console UI. The console is closed by the "Back to details" button or
+  // automatically when the VM stops.
   let consoleOpen = false;
   let consoleEl = null;
   let savedChildren = [];
   let consoleMsgHandler = null;
   let statePollTimer = null;
+
+  // Agent built-in SSH console state (xterm.js + WebSocket).
+  let sshTerm = null;
+  let sshFit = null;
+  let sshWS = null;
+  let sshRO = null;
 
   // consoleUrl builds the noVNC page URL: autoconnect with the WS proxy as
   // the "path" (noVNC resolves it against the page URL); the password goes
@@ -184,8 +189,13 @@ function initMachines() {
     return `/novnc/vnc.html?${params}#password=${encodeURIComponent(reqs.password || "")}`;
   }
 
-  async function openConsole(m) {
+  async function openConsole(m, mode) {
     if (consoleOpen) return;
+    if (mode === "ssh") {
+      await openSSHConsole(m);
+      return;
+    }
+    // VNC
     try {
       const res = await fetch(`/api/v1/machines/${encodeURIComponent(m.name)}/vnc`, {
         method: "POST",
@@ -252,6 +262,149 @@ function initMachines() {
 
     // The detail pane is not polled, so while the console is open poll the
     // VM state and close the console automatically when the VM stops.
+    startStatePolling(m);
+  }
+
+  // --- Agent built-in SSH console (xterm.js over the WS proxy) ---
+
+  // loadScriptOnce / loadCssOnce load an asset once and resolve when it is
+  // ready, so reopening the console does not re-download xterm.js.
+  function loadScriptOnce(src) {
+    if (document.querySelector(`script[src="${src}"]`)) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error(`failed to load ${src}`));
+      document.head.appendChild(s);
+    });
+  }
+
+  function loadCssOnce(href) {
+    if (document.querySelector(`link[href="${href}"]`)) return;
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = href;
+    document.head.appendChild(l);
+  }
+
+  async function openSSHConsole(m) {
+    try {
+      loadCssOnce("/xterm/xterm.css");
+      await loadScriptOnce("/xterm/xterm.js");
+      await loadScriptOnce("/xterm/addon-fit.js");
+    } catch (err) {
+      console.error("failed to load xterm.js:", err);
+      const p = vmEl("p", "error", `Failed to load terminal: ${err.message}`);
+      detailEl.prepend(p);
+      setTimeout(() => p.remove(), 5000);
+      return;
+    }
+    showSSHConsole(m);
+  }
+
+  function showSSHConsole(m) {
+    const head = detailEl.querySelector(".vm-head");
+
+    const strip = vmEl("div", "vm-console-strip");
+    const back = vmEl("button", "vm-console-back", "\u2190 Back to details");
+    back.addEventListener("click", () => closeConsole());
+    // Endpoint shown to the user: the SSH user (root) and the VM's vsock
+    // context ID (the port is fixed by the guest agent).
+    const endpoint = `root@${m.name}`;
+    const addr = vmEl("span", "vm-console-addr mono",
+      m.vsock_cid ? `${endpoint} \u00b7 vsock ${m.vsock_cid}:4949` : endpoint);
+    const status = vmEl("span", "vm-console-status", "Connecting\u2026");
+    const disconnect = vmEl("button", "vm-console-disconnect", "Disconnect");
+    disconnect.addEventListener("click", () => {
+      if (sshWS && sshWS.readyState <= WebSocket.OPEN) sshWS.close();
+    });
+    strip.append(back, addr, status, disconnect);
+
+    const termHost = vmEl("div", "vm-console-terminal");
+    consoleEl = vmEl("div", "vm-console vm-console-ssh");
+    consoleEl.append(strip, termHost);
+
+    // xterm.js terminal + fit addon, sized to its container.
+    sshTerm = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: "ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace",
+      theme: { background: "#0d1117" },
+      scrollback: 1000,
+    });
+    sshFit = new FitAddon.FitAddon();
+    sshTerm.loadAddon(sshFit);
+    sshTerm.open(termHost);
+
+    // WebSocket to the SSH proxy. Binary frames carry terminal I/O; the
+    // terminal sends resize updates as JSON text frames.
+    const wsProto = location.protocol === "https:" ? "wss" : "ws";
+    sshWS = new WebSocket(
+      `${wsProto}://${location.host}/api/v1/machines/${encodeURIComponent(m.name)}/ssh-ws`);
+    sshWS.binaryType = "arraybuffer";
+    sshWS.onopen = () => {
+      setSSHStatus(status, "Connected", true);
+      sendSSHResize();
+    };
+    sshWS.onmessage = (e) => {
+      if (e.data instanceof ArrayBuffer) sshTerm.write(new Uint8Array(e.data));
+    };
+    sshWS.onclose = () => setSSHStatus(status, "Disconnected", false);
+    sshWS.onerror = () => setSSHStatus(status, "Disconnected", false);
+
+    // Terminal input -> WS (binary frame). xterm emits a string; the proxy
+    // expects bytes, so encode UTF-8.
+    sshTerm.onData((data) => {
+      if (sshWS && sshWS.readyState === WebSocket.OPEN) {
+        sshWS.send(new TextEncoder().encode(data));
+      }
+    });
+
+    // Terminal resize -> WS. fit() (driven by a ResizeObserver on the
+    // container) triggers onResize, which sends the new dimensions.
+    sshTerm.onResize(() => sendSSHResize());
+    sshRO = new ResizeObserver(() => sshFit.fit());
+    sshRO.observe(termHost);
+    sshFit.fit();
+
+    // Keep the VM head and the Console button; hide the power buttons and
+    // the More button while the SSH console is open.
+    const actions = head ? head.querySelector(".vm-actions") : null;
+    if (actions) {
+      for (const child of actions.children) {
+        if (child.classList.contains("vm-console-btn")) continue;
+        child.classList.add("vm-console-hidden");
+      }
+    }
+    savedChildren = [];
+    for (const child of [...detailEl.children]) {
+      if (child !== head) {
+        savedChildren.push(child);
+        child.remove();
+      }
+    }
+    detailEl.append(consoleEl);
+    consoleOpen = true;
+
+    startStatePolling(m);
+  }
+
+  function setSSHStatus(el, text, ok) {
+    el.textContent = text;
+    el.classList.toggle("vm-console-status-ok", ok);
+    el.classList.toggle("vm-console-status-off", !ok);
+  }
+
+  function sendSSHResize() {
+    if (sshWS && sshWS.readyState === WebSocket.OPEN && sshTerm) {
+      sshWS.send(JSON.stringify({ type: "resize", cols: sshTerm.cols, rows: sshTerm.rows }));
+    }
+  }
+
+  // While a console is open the detail pane is not re-rendered, so poll the
+  // VM state and close the console automatically when the VM stops.
+  function startStatePolling(m) {
     stopStatePolling();
     statePollTimer = setInterval(async () => {
       if (!consoleOpen) return stopStatePolling();
@@ -276,6 +429,17 @@ function initMachines() {
     if (consoleMsgHandler) {
       window.removeEventListener("message", consoleMsgHandler);
       consoleMsgHandler = null;
+    }
+    // SSH console teardown.
+    if (sshRO) { sshRO.disconnect(); sshRO = null; }
+    if (sshWS) {
+      try { sshWS.close(); } catch (err) { /* already closed */ }
+      sshWS = null;
+    }
+    if (sshTerm) {
+      try { sshTerm.dispose(); } catch (err) { /* already disposed */ }
+      sshTerm = null;
+      sshFit = null;
     }
     if (consoleEl) {
       consoleEl.remove();
@@ -349,7 +513,7 @@ function initMachines() {
 
   function renderDetail(m, schemes, netErr) {
     // A fresh render rebuilds the head and blocks from scratch, so an open
-    // VNC console (if any) is torn down first.
+    // console (VNC or SSH, if any) is torn down first.
     closeConsole();
     const sCls = vmStateClass(m.state);
 
@@ -371,17 +535,34 @@ function initMachines() {
       form.append(vmEl("button", "btn-small", act[0].toUpperCase() + act.slice(1)));
       actions.append(form);
     }
-    // Console: opens the embedded noVNC client that reaches the VM's local
-    // VNC server through the dashboard's WS proxy. Available only for
-    // running VMs (VNC requires the VM to be up).
-    const consoleBtn = vmEl("button", "btn-small btn-icon");
+    // Console: a dropdown to pick the transport — the embedded noVNC client
+    // (VNC server over the dashboard's WS proxy) or the guest agent's
+    // built-in SSH (xterm.js over the WS proxy, AF_VSOCK). Available only
+    // for running VMs.
+    const consoleWrap = vmEl("div", "vm-more vm-console-btn");
+    const consoleBtn = vmEl("button", "btn-small");
+    consoleBtn.setAttribute("aria-haspopup", "true");
+    consoleBtn.setAttribute("aria-expanded", "false");
     if (!running) {
       consoleBtn.disabled = true;
       consoleBtn.title = "Console is available only for running VMs";
     }
-    consoleBtn.addEventListener("click", () => openConsole(m));
-    consoleBtn.append(vmIcon("ic-terminal"), vmEl("span", null, "Console"));
-    actions.append(consoleBtn);
+    consoleBtn.append(vmIcon("ic-terminal"), vmEl("span", "more-label", "Console"), vmEl("span", "more-caret"));
+    const consoleMenu = vmEl("div", "more-menu");
+    const vncItem = vmEl("button", "more-menu-item has-icon");
+    vncItem.append(vmIcon("ic-monitor"), vmEl("span", null, "VNC"));
+    vncItem.addEventListener("click", () => openConsole(m, "vnc"));
+    const sshItem = vmEl("button", "more-menu-item has-icon");
+    sshItem.append(vmIcon("ic-terminal"), vmEl("span", null, "Agent Built-in SSH"));
+    if (!m.vsock_cid) {
+      sshItem.disabled = true;
+      sshItem.title = "The VM has no vsock device — agent built-in SSH is not available";
+    } else {
+      sshItem.addEventListener("click", () => openConsole(m, "ssh"));
+    }
+    consoleMenu.append(vncItem, sshItem);
+    consoleWrap.append(consoleBtn, consoleMenu);
+    actions.append(consoleWrap);
     // More: slightly separated overflow button (Migrate / Re-build CI-drive).
     // Items are stubs until the daemon exposes the actions.
     const moreWrap = vmEl("div", "vm-more");

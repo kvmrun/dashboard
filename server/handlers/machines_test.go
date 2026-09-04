@@ -168,7 +168,7 @@ func TestNetworkScheme(t *testing.T) {
 				Addrs:  []string{"10.0.0.5/24"},
 				Attrs: &pb_types.NetworkSchemeOpts_Vlan{
 					Vlan: &pb_types.NetworkSchemeOpts_Attrs_VLAN{
-						VlanID:         12,
+						VlanID:          12,
 						ParentInterface: "bond0.12",
 					},
 				},

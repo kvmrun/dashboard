@@ -239,6 +239,9 @@ func machineDetail(m *pb_types.Machine) *model.MachineDetail {
 		if vga := opts.VGA; vga != nil {
 			d.VGAType = vga.Type
 		}
+		if vs := opts.VsockDevice; vs != nil {
+			d.VsockCid = vs.ContextID
+		}
 		d.DiskCount = len(opts.Storage)
 		d.NetIfaceCount = len(opts.Network)
 		d.Disks = diskInfoList(opts.Storage)

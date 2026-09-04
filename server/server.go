@@ -17,6 +17,7 @@ import (
 	"github.com/0xef53/kvmrun-dashboard/server/templates"
 	"github.com/0xef53/kvmrun-dashboard/web/novnc"
 	"github.com/0xef53/kvmrun-dashboard/web/static"
+	"github.com/0xef53/kvmrun-dashboard/web/xterm"
 )
 
 // Config carries everything the HTTP layer needs.
@@ -95,6 +96,13 @@ func New(cfg Config) *Server {
 		gin.WrapH(http.StripPrefix("/novnc/", http.FileServer(http.FS(novnc.FS)))),
 	)
 
+	// Embedded xterm.js terminal for the agent built-in SSH console on the
+	// machine detail page. It talks to the
+	// /api/v1/machines/{name}/ssh-ws proxy below.
+	engine.GET("/xterm/*filepath",
+		gin.WrapH(http.StripPrefix("/xterm/", http.FileServer(http.FS(xterm.FS)))),
+	)
+
 	engine.POST("/machines/:name/start", h.StartMachine)
 	engine.POST("/machines/:name/stop", h.StopMachine)
 	engine.POST("/machines/:name/restart", h.RestartMachine)
@@ -112,6 +120,9 @@ func New(cfg Config) *Server {
 		// WebSocket proxy (mini websockify) between the embedded noVNC
 		// client and the VM's local VNC server.
 		api.GET("/machines/:name/vnc-ws", h.VNCProxyWS)
+		// WebSocket proxy between the embedded xterm.js terminal and the
+		// guest agent's built-in SSH server over AF_VSOCK.
+		api.GET("/machines/:name/ssh-ws", h.SSHProxyWS)
 		// TODO: the remaining domains once their daemon services are wired up:
 		//   api.GET("/machines/:name/disks", h.DisksListJSON)   // storage
 		//   api.GET("/network", h.NetworkListJSON)              // network

@@ -19,11 +19,11 @@ type MachineSummary struct {
 
 // MachineDetail is the full description of a VM ("vmm inspect" output).
 type MachineDetail struct {
-	Name          string `json:"name"`
-	State         string `json:"state"`
-	PID           uint32 `json:"pid,omitempty"`
-	Lifetime      int64  `json:"lifetime,omitempty"`
-	MachineType   string `json:"machine_type,omitempty"`
+	Name        string `json:"name"`
+	State       string `json:"state"`
+	PID         uint32 `json:"pid,omitempty"`
+	Lifetime    int64  `json:"lifetime,omitempty"`
+	MachineType string `json:"machine_type,omitempty"`
 	// CpuModel is the CPU model string (MachineOpts.CPU.Model), e.g.
 	// "Broadwell-IBRS,+pcid".
 	CpuModel      string `json:"cpu_model,omitempty"`
@@ -32,6 +32,10 @@ type MachineDetail struct {
 	// (MachineOpts.Firmware.Flash).
 	FirmwareFlash string `json:"firmware_flash,omitempty"`
 	VGAType       string `json:"vga_type,omitempty"`
+	// VsockCid is the VM's AF_VSOCK context ID (MachineOpts.VsockDevice
+	// .ContextID) used to reach the guest agent's built-in services (SSH
+	// console over vsock). Zero when the VM has no vsock device.
+	VsockCid      uint32 `json:"vsock_cid,omitempty"`
 	MemActual     uint32 `json:"mem_actual"`
 	MemTotal      uint32 `json:"mem_total"`
 	CPUsActual    uint32 `json:"cpus_actual"`

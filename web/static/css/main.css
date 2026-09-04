@@ -986,3 +986,49 @@ button.more-menu-item:disabled {
 .vm-console-hidden {
     display: none;
 }
+
+/* Dropdown menu items that carry an icon (the Console dropdown). */
+button.more-menu-item.has-icon {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+button.more-menu-item.has-icon .ic {
+    width: 14px;
+    height: 14px;
+    flex: none;
+}
+
+/* SSH console (machines detail, concept 11-final): xterm.js fills the
+   remaining space under the strip, the same layout as the VNC console. The
+   Console button stays visible in the head while it is open. */
+.vm-console-terminal {
+    flex: 1;
+    min-height: 0;
+    background: #0d1117;
+    overflow: hidden;
+}
+
+.vm-console-terminal .xterm {
+    height: 100%;
+}
+
+/* Disconnect button on the right of the strip: ends the SSH session
+   (the panel stays, the status switches to "Disconnected"). */
+.vm-console-disconnect {
+    background: transparent;
+    border: 1px solid var(--menu-border);
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.vm-console-disconnect:hover {
+    color: var(--error);
+    border-color: var(--error);
+    background: rgb(247 110 110 / 0.1);
+}
