@@ -344,11 +344,66 @@ function initMachines() {
     const addr = vmEl("span", "vm-console-addr mono",
       m.vsock_cid ? `${endpoint} \u00b7 vsock ${m.vsock_cid}:4949` : endpoint);
     const status = vmEl("span", "vm-console-status", "Connecting\u2026");
-    const disconnect = vmEl("button", "vm-console-disconnect", "Disconnect");
-    disconnect.addEventListener("click", () => {
-      if (sshWS && sshWS.readyState <= WebSocket.OPEN) sshWS.close();
+    // Single Connect/Disconnect toggle: red outline ("Disconnect") while the
+    // session is up, green outline ("Connect") after it drops, disabled with
+    // a CSS spinner ("Connecting…") while (re)connecting.
+    const toggle = vmEl("button", "vm-console-toggle", "Connecting\u2026");
+    toggle.disabled = true;
+
+    // setSSHState updates the status text and the toggle for one of the
+    // three session states: "connecting", "connected", "disconnected".
+    function setSSHState(state) {
+      status.textContent = state === "connected" ? "Connected"
+        : state === "disconnected" ? "Disconnected"
+        : "Connecting\u2026";
+      status.classList.toggle("vm-console-status-ok", state === "connected");
+      status.classList.toggle("vm-console-status-off", state === "disconnected");
+      toggle.textContent = state === "connected" ? "Disconnect"
+        : state === "disconnected" ? "Connect"
+        : "Connecting\u2026";
+      toggle.classList.toggle("vm-console-toggle-connect", state === "disconnected");
+      toggle.classList.toggle("vm-console-toggle-disconnect", state === "connected");
+      toggle.disabled = state === "connecting";
+    }
+
+    // connectSSH opens (or re-opens) the WebSocket to the SSH proxy and
+    // wires its lifecycle to the status and the toggle. Binary frames carry
+    // terminal I/O; the terminal sends resize updates as JSON text frames.
+    function connectSSH() {
+      setSSHState("connecting");
+      const wsProto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(
+        `${wsProto}://${location.host}/api/v1/machines/${encodeURIComponent(m.name)}/ssh-ws`);
+      sshWS = ws;
+      ws.binaryType = "arraybuffer";
+      ws.onopen = () => {
+        if (sshWS !== ws) return; // superseded by a newer connect attempt
+        setSSHState("connected");
+        sendSSHResize();
+      };
+      ws.onmessage = (e) => {
+        if (sshWS !== ws) return;
+        if (e.data instanceof ArrayBuffer) sshTerm.write(new Uint8Array(e.data));
+      };
+      ws.onclose = () => {
+        if (sshWS === ws) setSSHState("disconnected");
+      };
+      ws.onerror = () => {
+        if (sshWS === ws) setSSHState("disconnected");
+      };
+    }
+
+    toggle.addEventListener("click", () => {
+      if (sshWS && sshWS.readyState <= WebSocket.OPEN) {
+        // Connected: end the session. onclose flips the state back to
+        // "Disconnected" and re-enables the button as "Connect".
+        sshWS.close();
+      } else {
+        // Disconnected (or the previous socket is still closing): reconnect.
+        connectSSH();
+      }
     });
-    strip.append(back, addr, status, disconnect);
+    strip.append(back, addr, status, toggle);
 
     const termHost = vmEl("div", "vm-console-terminal");
     consoleEl = vmEl("div", "vm-console vm-console-ssh");
@@ -366,22 +421,6 @@ function initMachines() {
     sshTerm.loadAddon(sshFit);
     sshTerm.open(termHost);
 
-    // WebSocket to the SSH proxy. Binary frames carry terminal I/O; the
-    // terminal sends resize updates as JSON text frames.
-    const wsProto = location.protocol === "https:" ? "wss" : "ws";
-    sshWS = new WebSocket(
-      `${wsProto}://${location.host}/api/v1/machines/${encodeURIComponent(m.name)}/ssh-ws`);
-    sshWS.binaryType = "arraybuffer";
-    sshWS.onopen = () => {
-      setSSHStatus(status, "Connected", true);
-      sendSSHResize();
-    };
-    sshWS.onmessage = (e) => {
-      if (e.data instanceof ArrayBuffer) sshTerm.write(new Uint8Array(e.data));
-    };
-    sshWS.onclose = () => setSSHStatus(status, "Disconnected", false);
-    sshWS.onerror = () => setSSHStatus(status, "Disconnected", false);
-
     // Terminal input -> WS (binary frame). xterm emits a string; the proxy
     // expects bytes, so encode UTF-8.
     sshTerm.onData((data) => {
@@ -397,12 +436,11 @@ function initMachines() {
     sshRO.observe(termHost);
     sshFit.fit();
 
-    // Keep the VM head and the Console button; hide the power buttons and
-    // the More button while the SSH console is open.
+    // Hide all the head action buttons (power, Console, More) while the SSH
+    // console is open.
     const actions = head ? head.querySelector(".vm-actions") : null;
     if (actions) {
       for (const child of actions.children) {
-        if (child.classList.contains("vm-console-btn")) continue;
         child.classList.add("vm-console-hidden");
       }
     }
@@ -416,13 +454,8 @@ function initMachines() {
     detailEl.append(consoleEl);
     consoleOpen = true;
 
+    connectSSH();
     startStatePolling(m);
-  }
-
-  function setSSHStatus(el, text, ok) {
-    el.textContent = text;
-    el.classList.toggle("vm-console-status-ok", ok);
-    el.classList.toggle("vm-console-status-off", !ok);
   }
 
   function sendSSHResize() {

@@ -1139,9 +1139,10 @@ button.more-menu-item.has-icon .ic {
     flex: none;
 }
 
-/* SSH console (machines detail, concept 11-final): xterm.js fills the
-   remaining space under the strip, the same layout as the VNC console. The
-   Console button stays visible in the head while it is open. */
+/* SSH console (machines detail, concepts 01+10): xterm.js fills the
+   remaining space under the strip, the same layout as the VNC console. All
+   the head action buttons (power, Console, More) are hidden while it is
+   open. */
 .vm-console-terminal {
     flex: 1;
     min-height: 0;
@@ -1153,12 +1154,16 @@ button.more-menu-item.has-icon .ic {
     height: 100%;
 }
 
-/* Disconnect button on the right of the strip: ends the SSH session
-   (the panel stays, the status switches to "Disconnected"). */
-.vm-console-disconnect {
+/* Connect/Disconnect toggle on the right of the strip: red outline
+   ("Disconnect") while the session is up, green outline ("Connect") after
+   it drops, disabled with a spinner while a (re)connect is in progress. */
+.vm-console-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     background: transparent;
     border: 1px solid var(--menu-border);
-    color: var(--fg);
+    color: var(--muted);
     font-family: var(--mono);
     font-size: 0.72rem;
     padding: 0.15rem 0.55rem;
@@ -1166,8 +1171,42 @@ button.more-menu-item.has-icon .ic {
     cursor: pointer;
 }
 
-.vm-console-disconnect:hover {
+.vm-console-toggle:disabled {
+    cursor: default;
+}
+
+.vm-console-toggle-connect {
+    color: var(--ok);
+    border-color: var(--ok);
+}
+
+.vm-console-toggle-connect:hover:enabled {
+    background: rgb(95 217 138 / 0.1);
+}
+
+.vm-console-toggle-disconnect {
     color: var(--error);
     border-color: var(--error);
+}
+
+.vm-console-toggle-disconnect:hover:enabled {
     background: rgb(247 110 110 / 0.1);
+}
+
+/* Spinner for the disabled "Connecting…" state. */
+.vm-console-toggle:disabled::before {
+    content: "";
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    border-top-color: var(--warn);
+    animation: vm-console-spin 0.8s linear infinite;
+}
+
+@keyframes vm-console-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
