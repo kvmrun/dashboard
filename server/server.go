@@ -115,6 +115,8 @@ func New(cfg Config) *Server {
 		api.GET("/machines", h.MachinesListJSON)
 		api.GET("/machines/:name", h.MachineDetailJSON)
 		api.GET("/machines/:name/networks", h.MachineNetworksJSON)
+		api.GET("/machines/:name/comment", h.MachineCommentJSON)
+		api.PUT("/machines/:name/comment", h.UpdateMachineCommentJSON)
 		api.GET("/tasks", h.TasksListJSON)
 		api.POST("/machines/:name/vnc", h.VNCActivateJSON)
 		// WebSocket proxy (mini websockify) between the embedded noVNC

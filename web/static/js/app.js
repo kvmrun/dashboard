@@ -19,6 +19,26 @@ function vmEl(tag, cls, text) {
   return node;
 }
 
+// showErrorDialog shows a modal error dialog: a dark panel with a red stripe
+// on the left, the error text (as returned by kvmrun) and a single "Close"
+// button. Clicking the button or the overlay removes the dialog.
+function showErrorDialog(message) {
+  const overlay = vmEl("div", "error-dialog-overlay");
+  const dialog = vmEl("div", "error-dialog");
+  dialog.append(vmEl("div", "error-dialog-stripe"));
+  dialog.append(vmEl("h3", "error-dialog-title", "Error"));
+  const msg = vmEl("pre", "error-dialog-msg");
+  msg.textContent = message || "Unknown error";
+  const closeBtn = vmEl("button", "error-dialog-close", "Close");
+  closeBtn.addEventListener("click", () => overlay.remove());
+  dialog.append(msg, closeBtn);
+  overlay.append(dialog);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.append(overlay);
+}
+
 function fmtDuration(totalSec) {
   if (!totalSec || totalSec <= 0) return "—";
   const d = Math.floor(totalSec / 86400);
@@ -135,9 +155,10 @@ function initMachines() {
   async function loadDetail(name) {
     const seq = ++detailSeq;
     try {
-      const [res, netRes] = await Promise.all([
+      const [res, netRes, comRes] = await Promise.all([
         fetch(`/api/v1/machines/${encodeURIComponent(name)}`),
         fetch(`/api/v1/machines/${encodeURIComponent(name)}/networks`),
+        fetch(`/api/v1/machines/${encodeURIComponent(name)}/comment`),
       ]);
       if (seq !== detailSeq || name !== selected) return; // stale response
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -150,7 +171,15 @@ function initMachines() {
       } else {
         netErr = `HTTP ${netRes.status}`;
       }
-      renderDetail(await res.json(), schemes, netErr);
+      // Same for the comment: a failed fetch only affects the comment panel.
+      let comment = "";
+      let comErr = null;
+      if (comRes.ok) {
+        comment = ((await comRes.json()) || {}).comment || "";
+      } else {
+        comErr = `HTTP ${comRes.status}`;
+      }
+      renderDetail(await res.json(), schemes, netErr, comment, comErr);
     } catch (err) {
       if (seq !== detailSeq || name !== selected) return;
       const p = vmEl("p", "error", `Failed to load ${name}: ${err.message}`);
@@ -511,7 +540,7 @@ function initMachines() {
     return block;
   }
 
-  function renderDetail(m, schemes, netErr) {
+  function renderDetail(m, schemes, netErr, comment, comErr) {
     // A fresh render rebuilds the head and blocks from scratch, so an open
     // console (VNC or SSH, if any) is torn down first.
     closeConsole();
@@ -630,13 +659,76 @@ function initMachines() {
     }
     net.append(netTitle, netBody);
 
-    // Comments — placeholder, kvmrun has no comment API yet.
+    // Comments block: read-only text with a pencil button in the title row.
+    // Clicking the pencil swaps the text for a textarea and reveals the
+    // "Update" button in the bottom-right corner. Errors from kvmrun are
+    // shown in a modal dialog with a single "Close" button.
     const com = vmEl("section", "panel-card");
     const comTitle = vmEl("h2", "panel-title");
     comTitle.append(vmIcon("ic-comment"), vmEl("span", null, "Comments"));
+    const editBtn = vmEl("button", "comment-edit-btn");
+    editBtn.setAttribute("aria-label", "Edit comment");
+    editBtn.title = "Edit comment";
+    editBtn.append(vmIcon("ic-edit"));
+    comTitle.append(editBtn);
+
     const box = vmEl("div", "comments-box");
-    box.append(vmIcon("ic-comment"), vmEl("span", "hint", "No comments yet"));
-    box.append(vmEl("p", "hint comment-note", "kvmrun has no comment API yet — placeholder"));
+    const textEl = vmEl("pre", "comment-text");
+    const textarea = vmEl("textarea", "comment-editor");
+    const footer = vmEl("div", "comment-actions");
+    const updateBtn = vmEl("button", "comment-update-btn", "Update");
+
+    let currentText = comment || "";
+    function renderCommentText() {
+      textEl.replaceChildren(currentText
+        ? document.createTextNode(currentText)
+        : vmEl("span", "hint", "No comments yet"));
+      textEl.classList.toggle("comment-empty", !currentText);
+    }
+    renderCommentText();
+    if (comErr) {
+      box.append(vmEl("p", "hint", `Failed to load comment: ${comErr}`));
+    }
+    textarea.value = currentText;
+    textarea.style.display = "none";
+    updateBtn.style.display = "none";
+    footer.append(updateBtn);
+    box.append(textEl, textarea, footer);
+
+    editBtn.addEventListener("click", () => {
+      textarea.value = currentText;
+      textarea.style.display = "";
+      textEl.style.display = "none";
+      updateBtn.style.display = "";
+      textarea.focus();
+    });
+
+    updateBtn.addEventListener("click", async () => {
+      updateBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/v1/machines/${encodeURIComponent(m.name)}/comment`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ comment: textarea.value }),
+        });
+        let body = null;
+        try { body = await res.json(); } catch (_) { /* ignore */ }
+        if (!res.ok) {
+          showErrorDialog((body && body.error) || `HTTP ${res.status}`);
+          return;
+        }
+        currentText = textarea.value;
+        renderCommentText();
+        textarea.style.display = "none";
+        textEl.style.display = "";
+        updateBtn.style.display = "none";
+      } catch (err) {
+        showErrorDialog(err.message);
+      } finally {
+        updateBtn.disabled = false;
+      }
+    });
+
     com.append(comTitle, box);
 
     // Two columns: Configuration + Comments stacked on the left (same

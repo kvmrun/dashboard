@@ -16,6 +16,7 @@ import (
 	pb_cloudinit "github.com/0xef53/kvmrun/api/services/cloudinit/v2"
 	pb_hardware "github.com/0xef53/kvmrun/api/services/hardware/v2"
 	pb_machines "github.com/0xef53/kvmrun/api/services/machines/v2"
+	pb_misc "github.com/0xef53/kvmrun/api/services/misc/v2"
 	pb_network "github.com/0xef53/kvmrun/api/services/network/v2"
 	pb_system "github.com/0xef53/kvmrun/api/services/system/v2"
 	pb_tasks "github.com/0xef53/kvmrun/api/services/tasks/v2"
@@ -39,6 +40,7 @@ type Client struct {
 	CloudInit pb_cloudinit.CloudInitServiceClient
 	Hardware  pb_hardware.HardwareServiceClient
 	Machines  pb_machines.MachineServiceClient
+	Misc      pb_misc.MiscServiceClient
 	Network   pb_network.NetworkServiceClient
 	System    pb_system.SystemServiceClient
 	Tasks     pb_tasks.TaskServiceClient
@@ -68,6 +70,7 @@ func New(addr string, tlsConfig *tls.Config) (*Client, error) {
 		CloudInit: pb_cloudinit.NewCloudInitServiceClient(conn),
 		Hardware:  pb_hardware.NewHardwareServiceClient(conn),
 		Machines:  pb_machines.NewMachineServiceClient(conn),
+		Misc:      pb_misc.NewMiscServiceClient(conn),
 		Network:   pb_network.NewNetworkServiceClient(conn),
 		System:    pb_system.NewSystemServiceClient(conn),
 		Tasks:     pb_tasks.NewTaskServiceClient(conn),

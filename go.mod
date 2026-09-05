@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/0xef53/go-grpc v0.0.0-20250804122917-f0d76f635ad5
-	github.com/0xef53/kvmrun v1.4.3-0.20260828204930-a320d0acf7db
+	github.com/0xef53/kvmrun v1.4.3-0.20260905131247-0f488c9d4b75
 	github.com/gin-gonic/gin v1.12.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/sirupsen/logrus v1.9.3
