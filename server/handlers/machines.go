@@ -6,13 +6,18 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	pb_machines "github.com/0xef53/kvmrun/api/services/machines/v2"
 	pb_network "github.com/0xef53/kvmrun/api/services/network/v2"
+	pb_tasks "github.com/0xef53/kvmrun/api/services/tasks/v2"
 	pb_types "github.com/0xef53/kvmrun/api/types/v2"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/0xef53/kvmrun-dashboard/internal/model"
 )
@@ -99,6 +104,108 @@ func (h *Handlers) ResetMachine(c *gin.Context) {
 	name := c.Param("name")
 	_, err := h.Daemon.Machines.Reset(c.Request.Context(), &pb_machines.ResetRequest{Name: name, Wait: true})
 	h.finishAction(c, name, err)
+}
+
+// MigrateRequest is the JSON body for starting a VM migration.
+type MigrateRequest struct {
+	DstServer string `json:"dst_server" binding:"required"`
+}
+
+// MigrateMachine starts migrating a VM to the destination server
+// (equivalent of `vmm migration start <name> <dst> --with-local-disks --create-disks`).
+// All local disks are copied and the disks are created on the destination
+// (create_disks = true, remove_after = false).
+func (h *Handlers) MigrateMachine(c *gin.Context) {
+	name := c.Param("name")
+	var req MigrateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "dst_server is required"})
+		return
+	}
+	ctx := c.Request.Context()
+
+	resp, err := h.Daemon.Machines.Get(ctx, &pb_machines.GetRequest{Name: name})
+	if err != nil || resp.Machine == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("machine %q not found", name)})
+		return
+	}
+	switch resp.Machine.State {
+	case pb_types.MachineState_RUNNING, pb_types.MachineState_PAUSED:
+	default:
+		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("machine is not running or paused: %s", resp.Machine.State.String())})
+		return
+	}
+
+	var disks []string
+	if runtime := resp.Machine.Runtime; runtime != nil {
+		for _, d := range runtime.Storage {
+			if d != nil && d.Path != "" {
+				disks = append(disks, d.Path)
+			}
+		}
+	}
+	if len(disks) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "machine has no local disks to migrate"})
+		return
+	}
+
+	migResp, err := h.Daemon.Machines.StartMigrationProcess(ctx, &pb_machines.StartMigrationRequest{
+		Name:        name,
+		DstServer:   req.DstServer,
+		Disks:       disks,
+		CreateDisks: true,
+		RemoveAfter: false,
+	})
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"task_key": migResp.TaskKey})
+}
+
+// MigrationStatusJSON returns the state of the VM's migration task
+// (task key: "<name>/migration") for polling from the frontend.
+func (h *Handlers) MigrationStatusJSON(c *gin.Context) {
+	name := c.Param("name")
+	resp, err := h.Daemon.Tasks.Get(c.Request.Context(), &pb_tasks.GetRequest{Key: name + "/migration"})
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "no migration task found"})
+			return
+		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	t := resp.Task
+	if t == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no migration task found"})
+		return
+	}
+
+	out := model.MigrationStatus{
+		TaskID:    t.TaskID,
+		State:     t.State.String(),
+		StateDesc: t.StateDesc,
+		Progress:  t.Progress,
+	}
+	if mig := t.GetMigration(); mig != nil {
+		out.DstServer = mig.DstServer
+		for diskName, stat := range mig.Disks {
+			if stat == nil {
+				continue
+			}
+			out.Disks = append(out.Disks, model.DiskMigrationProgress{
+				Name:      diskName,
+				Progress:  stat.Progress,
+				Total:     stat.Total,
+				Transferred: stat.Transferred,
+				Remaining: stat.Remaining,
+				Speed:     stat.Speed,
+			})
+		}
+		sort.Slice(out.Disks, func(i, j int) bool { return out.Disks[i].Name < out.Disks[j].Name })
+	}
+	c.JSON(http.StatusOK, out)
 }
 
 // finishAction reports the result of a power-control action: JSON for

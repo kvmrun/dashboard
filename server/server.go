@@ -125,6 +125,9 @@ func New(cfg Config) *Server {
 		// WebSocket proxy between the embedded xterm.js terminal and the
 		// guest agent's built-in SSH server over AF_VSOCK.
 		api.GET("/machines/:name/ssh-ws", h.SSHProxyWS)
+		// Migration: start and poll status
+		api.POST("/machines/:name/migrate", h.MigrateMachine)
+		api.GET("/machines/:name/migration", h.MigrationStatusJSON)
 		// TODO: the remaining domains once their daemon services are wired up:
 		//   api.GET("/machines/:name/disks", h.DisksListJSON)   // storage
 		//   api.GET("/network", h.NetworkListJSON)              // network

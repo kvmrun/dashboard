@@ -1020,6 +1020,185 @@ button.error-dialog-close:hover {
     background: #3a414c;
 }
 
+/* Migration dialogs: same panel as the error dialog, but the left stripe
+   is colored per outcome (blue = start, green = success) and the buttons
+   are left-aligned with the content. The "Start" button uses the primary
+   filled style (same as the Log out button). */
+.dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.dialog {
+    position: relative;
+    width: 480px;
+    max-width: calc(100vw - 2rem);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.45);
+}
+
+.dialog-stripe {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 5px;
+    border-radius: 8px 0 0 8px;
+}
+
+.migrate-dialog .dialog-stripe { background: var(--accent); }
+.success-dialog .dialog-stripe { background: var(--ok); }
+
+.dialog-title {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.dialog-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.dialog-col-left .dialog-title {
+    margin-bottom: 0.5rem;
+}
+
+.dialog-body {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--muted);
+}
+
+.dialog-label {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.35rem;
+}
+
+.dialog-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    padding: 0.5rem 0.6rem;
+    margin-bottom: 0.75rem;
+}
+
+.dialog-input::placeholder {
+    color: var(--muted);
+}
+
+.dialog-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Reserved space between input and buttons for the handshake indicator.
+   The handshake itself is hidden (display:none) until Start is pressed. */
+.dialog-handshake-area {
+    display: flex;
+    align-items: center;
+    min-height: 2.25rem;
+}
+
+/* Handshake status: orange spinner + text, shown only while the start
+   request is in flight. */
+.dialog-handshake {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--warn);
+}
+
+.dialog-spinner {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    border-top-color: var(--warn);
+    visibility: hidden;
+    flex: none;
+}
+
+.dialog-handshake .dialog-spinner.active {
+    visibility: visible;
+    animation: dialog-spin 0.8s linear infinite;
+}
+
+@keyframes dialog-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Buttons row: Start and Cancel side by side. Aligned to the left edge of
+   the left text column; both buttons are equal in size and together span
+   the width of the left column (same width as the description text block). */
+.dialog-buttons-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: calc((100% - 1.25rem) / 2);
+    margin-top: 1rem;
+}
+
+.dialog-buttons-row button.dialog-btn {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+button.dialog-btn {
+    background: #343a42;
+    border: 1px solid var(--accent);
+    color: var(--fg);
+    padding: 0.4rem 1.1rem;
+    text-align: center;
+}
+
+button.dialog-btn:hover {
+    filter: none;
+    background: #3a414c;
+}
+
+button.dialog-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: none;
+}
+
+/* Primary action: filled accent background, white text (Log out style). */
+button.dialog-btn-primary {
+    background: var(--accent);
+    border-color: transparent;
+    color: #fff;
+}
+
+button.dialog-btn-primary:hover {
+    background: var(--accent);
+    filter: brightness(1.15);
+}
+
+button.dialog-btn-primary:disabled {
+    opacity: 0.5;
+    filter: none;
+}
+
 /* Inline SVG icons (machines detail pane). */
 .ic {
     width: 16px;

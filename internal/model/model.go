@@ -105,6 +105,26 @@ type TaskInfo struct {
 	Progress  uint32 `json:"progress"`
 }
 
+// MigrationStatus describes the progress of a VM migration task.
+type MigrationStatus struct {
+	TaskID    string  `json:"task_id"`
+	State     string  `json:"state"`
+	StateDesc string  `json:"state_desc,omitempty"`
+	Progress  uint32  `json:"progress"`
+	DstServer string  `json:"dst_server,omitempty"`
+	Disks     []DiskMigrationProgress `json:"disks,omitempty"`
+}
+
+// DiskMigrationProgress describes per-disk migration progress.
+type DiskMigrationProgress struct {
+	Name      string `json:"name"`
+	Progress  uint32 `json:"progress"`
+	Total     uint64 `json:"total,omitempty"`
+	Transferred uint64 `json:"transferred,omitempty"`
+	Remaining uint64 `json:"remaining,omitempty"`
+	Speed     uint32 `json:"speed,omitempty"`
+}
+
 // SystemInfo describes the daemon and the host as reported by the system
 // service.
 type SystemInfo struct {

@@ -626,19 +626,31 @@ function initMachines() {
     consoleWrap.append(consoleBtn, consoleMenu);
     actions.append(consoleWrap);
     // More: slightly separated overflow button (Migrate / Re-build CI-drive).
-    // Items are stubs until the daemon exposes the actions.
+    // "Migrate" is wired to the migration dialog; "Re-build CI-drive" is still
+    // a stub until the daemon exposes the action.
     const moreWrap = vmEl("div", "vm-more");
     const moreBtn = vmEl("button", "btn-small");
     moreBtn.setAttribute("aria-haspopup", "true");
     moreBtn.setAttribute("aria-expanded", "false");
     moreBtn.append(vmEl("span", "more-label", "More"), vmEl("span", "more-caret"));
     const moreMenu = vmEl("div", "more-menu");
-    for (const label of ["Migrate", "Re-build CI-drive"]) {
-      const item = vmEl("button", "more-menu-item", label);
-      item.disabled = true;
-      item.title = "Coming soon";
-      moreMenu.append(item);
+    const migrateItem = vmEl("button", "more-menu-item", "Migrate");
+    const canMigrate = ["running", "paused"].includes((m.state || "").toLowerCase());
+    if (!canMigrate) {
+      migrateItem.disabled = true;
+      migrateItem.title = "Migration is only available for running or paused VMs";
+    } else {
+      migrateItem.addEventListener("click", () => {
+        moreMenu.classList.remove("open");
+        moreBtn.setAttribute("aria-expanded", "false");
+        showMigrateDialog(m);
+      });
     }
+    moreMenu.append(migrateItem);
+    const rebuildItem = vmEl("button", "more-menu-item", "Re-build CI-drive");
+    rebuildItem.disabled = true;
+    rebuildItem.title = "Coming soon";
+    moreMenu.append(rebuildItem);
     moreWrap.append(moreBtn, moreMenu);
     actions.append(moreWrap);
     titleRow.append(actions);
@@ -772,6 +784,164 @@ function initMachines() {
     panels.append(col, net);
 
     detailEl.replaceChildren(head, cards, panels);
+  }
+
+  // ====== Migration dialogs and polling ======
+  let migrationTimer = null;
+
+  function stopMigrationPolling() {
+    if (migrationTimer) { clearInterval(migrationTimer); migrationTimer = null; }
+  }
+
+  function updateStateCard(t) {
+    const cards = detailEl.querySelector(".stat-cards");
+    if (!cards) return;
+    const stateCard = cards.firstElementChild;
+    if (!stateCard) return;
+    const val = stateCard.querySelector(".stat-value");
+    const sub = stateCard.querySelector(".stat-sub");
+    val.textContent = "MIGRATING";
+    val.className = "stat-value st-migrating";
+    if (sub) sub.textContent = `\u2192 ${t.dst_server || "?"} \u00b7 ${t.progress ?? 0}%`;
+  }
+
+  function showMigrateErrorDialog(message) {
+    showErrorDialog(message);
+  }
+
+  function showMigrateSuccessDialog() {
+    const overlay = vmEl("div", "dialog-overlay");
+    const dialog = vmEl("div", "dialog success-dialog");
+    dialog.append(vmEl("div", "dialog-stripe"));
+    dialog.append(vmEl("h3", "dialog-title", "Migration started"));
+    dialog.append(vmEl("p", "dialog-msg",
+      "The migration process was started successfully and is now running in the background."));
+    dialog.append(vmEl("p", "dialog-msg",
+      "When the migration completes, the source VM will be shut down \u2014 delete it manually afterwards."));
+    const okBtn = vmEl("button", "dialog-btn", "OK");
+    okBtn.addEventListener("click", () => overlay.remove());
+    dialog.append(okBtn);
+    overlay.append(dialog);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.append(overlay);
+  }
+
+  function startMigrationPolling(name) {
+    stopMigrationPolling();
+
+    async function poll() {
+      try {
+        const res = await fetch(`/api/v1/machines/${encodeURIComponent(name)}/migration`);
+        if (!res.ok) {
+          if (res.status === 404) {
+            stopMigrationPolling();
+            loadDetail(name);
+          }
+          return;
+        }
+        const t = await res.json();
+        if (t.state === "RUNNING") updateStateCard(t);
+        if (t.state === "COMPLETED") {
+          stopMigrationPolling();
+          loadDetail(name);
+          const overlay = vmEl("div", "dialog-overlay");
+          const dialog = vmEl("div", "dialog success-dialog");
+          dialog.append(vmEl("div", "dialog-stripe"));
+          dialog.append(vmEl("h3", "dialog-title", "Migration completed"));
+          dialog.append(vmEl("p", "dialog-msg",
+            "The source VM has been shut down. Delete it manually if no longer needed."));
+          const okBtn = vmEl("button", "dialog-btn", "OK");
+          okBtn.addEventListener("click", () => overlay.remove());
+          dialog.append(okBtn);
+          overlay.append(dialog);
+          overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+          document.body.append(overlay);
+        } else if (t.state === "FAILED") {
+          stopMigrationPolling();
+          loadDetail(name);
+          showMigrateErrorDialog(t.state_desc || "Migration failed");
+        }
+      } catch (_) { /* transient network errors: keep polling */ }
+    }
+
+    poll();
+    migrationTimer = setInterval(poll, 5000);
+  }
+
+  function showMigrateDialog(m) {
+    const overlay = vmEl("div", "dialog-overlay");
+    const dialog = vmEl("div", "dialog migrate-dialog");
+    dialog.append(vmEl("div", "dialog-stripe"));
+
+    const cols = vmEl("div", "dialog-cols");
+    const left = vmEl("div", "dialog-col-left");
+    left.append(vmEl("h3", "dialog-title", "Migrate"));
+    const desc1 = vmEl("p", "dialog-body",
+      "The VM will be moved to the destination server. All local disks are copied, new disks are created on the target.");
+    const desc2 = vmEl("p", "dialog-body",
+      "The source VM is stopped after the migration finishes.");
+    left.append(desc1, desc2);
+
+    const right = vmEl("div", "dialog-col-right");
+    const input = vmEl("input", "dialog-input");
+    input.type = "text";
+    input.placeholder = "hostname or IP";
+
+    // Reserved space for handshake indicator (appears after Start is pressed).
+    const hsArea = vmEl("div", "dialog-handshake-area");
+    const hs = vmEl("div", "dialog-handshake");
+    const spinner = vmEl("span", "dialog-spinner");
+    const hsText = vmEl("span", null, "negotiating\u2026");
+    hs.append(spinner, hsText);
+    hs.style.display = "none";
+    hsArea.append(hs);
+
+    // Buttons row: Start and Cancel side by side.
+    const btnRow = vmEl("div", "dialog-buttons-row");
+    const startBtn = vmEl("button", "dialog-btn dialog-btn-primary", "Start");
+    const cancelBtn = vmEl("button", "dialog-btn", "Cancel");
+    cancelBtn.addEventListener("click", () => overlay.remove());
+    btnRow.append(startBtn, cancelBtn);
+
+    right.append(vmEl("label", "dialog-label", "DESTINATION"), input, hsArea);
+    cols.append(left, right);
+    dialog.append(cols, btnRow);
+    overlay.append(dialog);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.append(overlay);
+    input.focus();
+
+    startBtn.addEventListener("click", async () => {
+      const dst = input.value.trim();
+      if (!dst) { input.focus(); return; }
+      startBtn.disabled = true;
+      hs.style.display = "flex";
+      spinner.classList.add("active");
+      try {
+        const res = await fetch(`/api/v1/machines/${encodeURIComponent(m.name)}/migrate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dst_server: dst }),
+        });
+        let body = null;
+        try { body = await res.json(); } catch (_) { /* ignore */ }
+        if (!res.ok) {
+          showMigrateErrorDialog((body && body.error) || `HTTP ${res.status}`);
+          hs.style.display = "none";
+          spinner.classList.remove("active");
+          return;
+        }
+        overlay.remove();
+        showMigrateSuccessDialog();
+        startMigrationPolling(m.name);
+      } catch (err) {
+        showMigrateErrorDialog(err.message);
+        hs.style.display = "none";
+        spinner.classList.remove("active");
+      } finally {
+        startBtn.disabled = false;
+      }
+    });
   }
 
   async function loadList() {
