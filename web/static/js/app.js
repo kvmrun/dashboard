@@ -805,26 +805,8 @@ function initMachines() {
     if (sub) sub.textContent = `\u2192 ${t.dst_server || "?"} \u00b7 ${t.progress ?? 0}%`;
   }
 
-  function showMigrateErrorDialog(message) {
-    showErrorDialog(message);
-  }
-
-  function showMigrateSuccessDialog() {
-    const overlay = vmEl("div", "dialog-overlay");
-    const dialog = vmEl("div", "dialog success-dialog");
-    dialog.append(vmEl("div", "dialog-stripe"));
-    dialog.append(vmEl("h3", "dialog-title", "Migration started"));
-    dialog.append(vmEl("p", "dialog-msg",
-      "The migration process was started successfully and is now running in the background."));
-    dialog.append(vmEl("p", "dialog-msg",
-      "When the migration completes, the source VM will be shut down \u2014 delete it manually afterwards."));
-    const okBtn = vmEl("button", "dialog-btn", "OK");
-    okBtn.addEventListener("click", () => overlay.remove());
-    dialog.append(okBtn);
-    overlay.append(dialog);
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-    document.body.append(overlay);
-  }
+  // (showMigrateErrorDialog / showMigrateSuccessDialog removed —
+  //  error and success are now shown inline inside showMigrateDialog)
 
   function startMigrationPolling(name) {
     stopMigrationPolling();
@@ -844,22 +826,10 @@ function initMachines() {
         if (t.state === "COMPLETED") {
           stopMigrationPolling();
           loadDetail(name);
-          const overlay = vmEl("div", "dialog-overlay");
-          const dialog = vmEl("div", "dialog success-dialog");
-          dialog.append(vmEl("div", "dialog-stripe"));
-          dialog.append(vmEl("h3", "dialog-title", "Migration completed"));
-          dialog.append(vmEl("p", "dialog-msg",
-            "The source VM has been shut down. Delete it manually if no longer needed."));
-          const okBtn = vmEl("button", "dialog-btn", "OK");
-          okBtn.addEventListener("click", () => overlay.remove());
-          dialog.append(okBtn);
-          overlay.append(dialog);
-          overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-          document.body.append(overlay);
         } else if (t.state === "FAILED") {
           stopMigrationPolling();
           loadDetail(name);
-          showMigrateErrorDialog(t.state_desc || "Migration failed");
+          showErrorDialog(t.state_desc || "Migration failed");
         }
       } catch (_) { /* transient network errors: keep polling */ }
     }
@@ -887,6 +857,12 @@ function initMachines() {
     input.type = "text";
     input.placeholder = "hostname or IP";
 
+    // "Remove after" checkbox
+    const removeAfterLabel = vmEl("label", "dialog-checkbox-row");
+    const removeAfterChk = vmEl("input", "dialog-checkbox");
+    removeAfterChk.type = "checkbox";
+    removeAfterLabel.append(removeAfterChk, document.createTextNode("Remove after migration"));
+
     // Reserved space for handshake indicator (appears after Start is pressed).
     const hsArea = vmEl("div", "dialog-handshake-area");
     const hs = vmEl("div", "dialog-handshake");
@@ -896,6 +872,10 @@ function initMachines() {
     hs.style.display = "none";
     hsArea.append(hs);
 
+    // Inline notification area (error / success)
+    const noticeArea = vmEl("div", "dialog-notice-area");
+    noticeArea.style.display = "none";
+
     // Buttons row: Start and Cancel side by side.
     const btnRow = vmEl("div", "dialog-buttons-row");
     const startBtn = vmEl("button", "dialog-btn dialog-btn-primary", "Start");
@@ -903,13 +883,43 @@ function initMachines() {
     cancelBtn.addEventListener("click", () => overlay.remove());
     btnRow.append(startBtn, cancelBtn);
 
-    right.append(vmEl("label", "dialog-label", "DESTINATION"), input, hsArea);
+    right.append(vmEl("label", "dialog-label", "DESTINATION"), input, removeAfterLabel, hsArea);
     cols.append(left, right);
-    dialog.append(cols, btnRow);
+    dialog.append(cols, noticeArea, btnRow);
     overlay.append(dialog);
     overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
     document.body.append(overlay);
     input.focus();
+
+    // Inline error display: red stripe + "Error" title + message, then buttons remain
+    function showInlineError(message) {
+      noticeArea.className = "dialog-notice-area dialog-notice-error";
+      noticeArea.replaceChildren(
+        vmEl("div", "dialog-notice-title", "Error"),
+      );
+      const msg = vmEl("pre", "dialog-notice-msg");
+      msg.textContent = message || "Unknown error";
+      noticeArea.append(msg);
+      noticeArea.style.display = "block";
+    }
+
+    // Inline success display: green stripe + "Migration started" + OK button replaces Start/Cancel
+    function showInlineSuccess() {
+      noticeArea.className = "dialog-notice-area dialog-notice-success";
+      noticeArea.replaceChildren(
+        vmEl("div", "dialog-notice-title", "Migration started"),
+        vmEl("p", "dialog-notice-msg",
+          "The migration process was started successfully and is now running in the background."),
+        vmEl("p", "dialog-notice-msg",
+          "When the migration completes, the source VM will be shut down \u2014 delete it manually afterwards."),
+      );
+      noticeArea.style.display = "block";
+      // Replace Start/Cancel with a single OK button
+      btnRow.replaceChildren();
+      const okBtn = vmEl("button", "dialog-btn dialog-btn-ok", "OK");
+      okBtn.addEventListener("click", () => overlay.remove());
+      btnRow.append(okBtn);
+    }
 
     startBtn.addEventListener("click", async () => {
       const dst = input.value.trim();
@@ -921,24 +931,25 @@ function initMachines() {
         const res = await fetch(`/api/v1/machines/${encodeURIComponent(m.name)}/migrate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dst_server: dst }),
+          body: JSON.stringify({ dst_server: dst, remove_after: removeAfterChk.checked }),
         });
         let body = null;
         try { body = await res.json(); } catch (_) { /* ignore */ }
         if (!res.ok) {
-          showMigrateErrorDialog((body && body.error) || `HTTP ${res.status}`);
+          showInlineError((body && body.error) || `HTTP ${res.status}`);
           hs.style.display = "none";
           spinner.classList.remove("active");
+          startBtn.disabled = false;
           return;
         }
-        overlay.remove();
-        showMigrateSuccessDialog();
-        startMigrationPolling(m.name);
-      } catch (err) {
-        showMigrateErrorDialog(err.message);
         hs.style.display = "none";
         spinner.classList.remove("active");
-      } finally {
+        showInlineSuccess();
+        startMigrationPolling(m.name);
+      } catch (err) {
+        showInlineError(err.message);
+        hs.style.display = "none";
+        spinner.classList.remove("active");
         startBtn.disabled = false;
       }
     });

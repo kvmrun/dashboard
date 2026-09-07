@@ -108,13 +108,15 @@ func (h *Handlers) ResetMachine(c *gin.Context) {
 
 // MigrateRequest is the JSON body for starting a VM migration.
 type MigrateRequest struct {
-	DstServer string `json:"dst_server" binding:"required"`
+	DstServer   string `json:"dst_server" binding:"required"`
+	RemoveAfter bool   `json:"remove_after"`
 }
 
 // MigrateMachine starts migrating a VM to the destination server
 // (equivalent of `vmm migration start <name> <dst> --with-local-disks --create-disks`).
 // All local disks are copied and the disks are created on the destination
-// (create_disks = true, remove_after = false).
+// (create_disks = true). remove_after is taken from the request, so the
+// source machine may optionally be deleted once the migration completes.
 func (h *Handlers) MigrateMachine(c *gin.Context) {
 	name := c.Param("name")
 	var req MigrateRequest
@@ -154,7 +156,7 @@ func (h *Handlers) MigrateMachine(c *gin.Context) {
 		DstServer:   req.DstServer,
 		Disks:       disks,
 		CreateDisks: true,
-		RemoveAfter: false,
+		RemoveAfter: req.RemoveAfter,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
