@@ -27,7 +27,14 @@ func TestPagesExecute(t *testing.T) {
 		"system.html": {
 			"Title": "Overview",
 			"Page":  "home",
-			"Info":  model.SystemInfo{GoVersion: "go1.24"},
+			"Info": model.SystemInfo{
+				GoVersion:   "go1.24",
+				QemuRootdir: "/var/lib/kvmrun",
+				CertDir:     "/usr/share/kvmrun/tls",
+				TotalVMs:    12,
+				RunningVMs:  7,
+				StoppedVMs:  5,
+			},
 		},
 		"tasks.html": {"Title": "Tasks", "Page": "tasks"},
 		"top.html":   {"Title": "Top", "Page": "top"},

@@ -532,6 +532,24 @@ button.btn-small:hover {
     gap: 0.75rem;
 }
 
+/* Overview page shows three stat cards instead of four. */
+.stat-cards.cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Overview page: sections in a column with a uniform 1rem gap (same rhythm
+   as .vm-detail). h1 gets a zero margin so its default margin does not add
+   on top of the flex gap. */
+.overview {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.overview h1 {
+    margin: 0;
+}
+
 .stat-card {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -596,6 +614,12 @@ button.btn-small:hover {
 
 .panel-title .ic {
     color: var(--muted);
+}
+
+/* Right-aligned hint inside a panel title (e.g. the "placeholder" marker on
+   the cloud-init block). */
+.panel-title .hint {
+    margin-left: auto;
 }
 
 .kv-list {

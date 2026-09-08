@@ -1,10 +1,101 @@
 {{template "layout" .}}
 
 {{define "content"}}
+<div class="overview">
 <h1>Overview</h1>
-<table class="detail">
-    <tr><th>Dashboard (Go)</th><td>{{.GoVersion}}</td></tr>
-    <tr><th>QEMU rootdir</th><td>{{if .Info.QemuRootdir}}{{.Info.QemuRootdir}}{{else}}---{{end}}</td></tr>
-    <tr><th>Cert dir</th><td>{{if .Info.CertDir}}{{.Info.CertDir}}{{else}}---{{end}}</td></tr>
-</table>
+
+<!-- Icon set for the overview page (inline, stroke-based, currentColor). -->
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+    <defs>
+        <symbol id="ic-box" viewBox="0 0 24 24">
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+            <path d="M4 10h16" />
+        </symbol>
+        <symbol id="ic-power" viewBox="0 0 24 24">
+            <path d="M12 3v8" />
+            <path d="M7.2 6.2a7.5 7.5 0 1 0 9.6 0" />
+        </symbol>
+        <symbol id="ic-cloud" viewBox="0 0 24 24">
+            <path d="M7 18a4 4 0 0 1-.48-7.97A5.5 5.5 0 0 1 17.2 8.6 3.7 3.7 0 0 1 17 18H7z" />
+        </symbol>
+    </defs>
+</svg>
+
+<div class="stat-cards cols-3">
+    <div class="stat-card">
+        <div class="stat-top">
+            <svg class="ic" aria-hidden="true"><use href="#ic-box"></use></svg>
+            <span>TOTAL MACHINES</span>
+        </div>
+        <div class="stat-value">{{.Info.TotalVMs}}</div>
+        <div class="stat-sub">total on host</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-top">
+            <svg class="ic" aria-hidden="true"><use href="#ic-power"></use></svg>
+            <span>RUNNING</span>
+        </div>
+        <div class="stat-value st-running">{{.Info.RunningVMs}}</div>
+        <div class="stat-sub">of {{.Info.TotalVMs}} total</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-top">
+            <svg class="ic" aria-hidden="true"><use href="#ic-box"></use></svg>
+            <span>STOPPED</span>
+        </div>
+        <div class="stat-value">{{.Info.StoppedVMs}}</div>
+        <div class="stat-sub">of {{.Info.TotalVMs}} total</div>
+    </div>
+</div>
+
+<div class="vm-panels">
+    <section class="panel-card">
+        <h2 class="panel-title">
+            <svg class="ic" aria-hidden="true"><use href="#ic-box"></use></svg>
+            <span>Kvmrun config</span>
+        </h2>
+        <div class="kv-list">
+            <div class="kv-row">
+                <svg class="ic" aria-hidden="true"><use href="#ic-box"></use></svg>
+                <span class="kv-label">QEMU rootdir</span>
+                <span class="kv-value">{{if .Info.QemuRootdir}}{{.Info.QemuRootdir}}{{else}}—{{end}}</span>
+            </div>
+            <div class="kv-row">
+                <svg class="ic" aria-hidden="true"><use href="#ic-box"></use></svg>
+                <span class="kv-label">Cert dir</span>
+                <span class="kv-value">{{if .Info.CertDir}}{{.Info.CertDir}}{{else}}—{{end}}</span>
+            </div>
+            <div class="kv-row">
+                <svg class="ic" aria-hidden="true"><use href="#ic-box"></use></svg>
+                <span class="kv-label">Dashboard (Go)</span>
+                <span class="kv-value">{{.Info.GoVersion}}</span>
+            </div>
+        </div>
+    </section>
+    <section class="panel-card">
+        <h2 class="panel-title">
+            <svg class="ic" aria-hidden="true"><use href="#ic-cloud"></use></svg>
+            <span>Cloud-init (default image)</span>
+            <span class="hint">placeholder</span>
+        </h2>
+        <div class="kv-list">
+            <div class="kv-row">
+                <svg class="ic" aria-hidden="true"><use href="#ic-cloud"></use></svg>
+                <span class="kv-label">Image</span>
+                <span class="kv-value">—</span>
+            </div>
+            <div class="kv-row">
+                <svg class="ic" aria-hidden="true"><use href="#ic-cloud"></use></svg>
+                <span class="kv-label">Disk size</span>
+                <span class="kv-value">—</span>
+            </div>
+            <div class="kv-row">
+                <svg class="ic" aria-hidden="true"><use href="#ic-cloud"></use></svg>
+                <span class="kv-label">Auto-grow</span>
+                <span class="kv-value">—</span>
+            </div>
+        </div>
+    </section>
+</div>
+</div>
 {{end}}

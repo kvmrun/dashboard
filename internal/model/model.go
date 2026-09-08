@@ -107,22 +107,22 @@ type TaskInfo struct {
 
 // MigrationStatus describes the progress of a VM migration task.
 type MigrationStatus struct {
-	TaskID    string  `json:"task_id"`
-	State     string  `json:"state"`
-	StateDesc string  `json:"state_desc,omitempty"`
-	Progress  uint32  `json:"progress"`
-	DstServer string  `json:"dst_server,omitempty"`
+	TaskID    string                  `json:"task_id"`
+	State     string                  `json:"state"`
+	StateDesc string                  `json:"state_desc,omitempty"`
+	Progress  uint32                  `json:"progress"`
+	DstServer string                  `json:"dst_server,omitempty"`
 	Disks     []DiskMigrationProgress `json:"disks,omitempty"`
 }
 
 // DiskMigrationProgress describes per-disk migration progress.
 type DiskMigrationProgress struct {
-	Name      string `json:"name"`
-	Progress  uint32 `json:"progress"`
-	Total     uint64 `json:"total,omitempty"`
+	Name        string `json:"name"`
+	Progress    uint32 `json:"progress"`
+	Total       uint64 `json:"total,omitempty"`
 	Transferred uint64 `json:"transferred,omitempty"`
-	Remaining uint64 `json:"remaining,omitempty"`
-	Speed     uint32 `json:"speed,omitempty"`
+	Remaining   uint64 `json:"remaining,omitempty"`
+	Speed       uint32 `json:"speed,omitempty"`
 }
 
 // SystemInfo describes the daemon and the host as reported by the system
@@ -131,4 +131,11 @@ type SystemInfo struct {
 	GoVersion   string `json:"go_version"`
 	QemuRootdir string `json:"qemu_rootdir,omitempty"`
 	CertDir     string `json:"cert_dir,omitempty"`
+	// TotalVMs is the number of machines on the host (MachineService.List).
+	TotalVMs int `json:"total_vms"`
+	// RunningVMs counts machines in the RUNNING or PAUSED state.
+	RunningVMs int `json:"running_vms"`
+	// StoppedVMs is everything that is not running (TotalVMs - RunningVMs),
+	// so the three stat cards always sum to the total.
+	StoppedVMs int `json:"stopped_vms"`
 }
