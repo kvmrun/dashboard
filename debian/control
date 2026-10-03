@@ -1,0 +1,12 @@
+Package: kvmrun-dashboard
+Version: @VERSION@
+Architecture: @ARCH@
+Maintainer: Sergey Zhuravlev <sergey@netangels.ru>
+Installed-Size: @INSTALLED_SIZE@
+Section: admin
+Priority: extra
+Homepage: https://github.com/kvmrun/dashboard
+Depends: @DEPENDS@
+Description: A browser dashboard for Kvmrun
+ Web interface for managing virtual machines. It visualizes and controls
+ the same information as the vmm CLI, over the kvmrund gRPC API.

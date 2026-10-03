@@ -1,0 +1,12 @@
+[Unit]
+Description=Kvmrun Dashboard
+Documentation=https://github.com/kvmrun/dashboard
+After=network.target
+
+[Service]
+Restart=always
+RestartSec=1
+ExecStart=/usr/lib/kvmrun-dashboard/dashboard --listen 127.0.0.1:9394
+
+[Install]
+WantedBy=multi-user.target

@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,6 +22,7 @@ import (
 	"github.com/0xef53/kvmrun-dashboard/internal/auth"
 	"github.com/0xef53/kvmrun-dashboard/internal/config"
 	"github.com/0xef53/kvmrun-dashboard/internal/daemon"
+	"github.com/0xef53/kvmrun-dashboard/internal/version"
 	"github.com/0xef53/kvmrun-dashboard/server"
 )
 
@@ -34,8 +36,14 @@ func init() {
 func main() {
 	app := new(cli.Command)
 
+	app.Name = "dashboard"
 	app.Usage = "WEB interface for managing virtual machines"
+	app.Version = version.Dashboard
 	app.Action = run
+
+	cli.VersionPrinter = func(_ *cli.Command) {
+		fmt.Println(version.Dashboard)
+	}
 
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
@@ -71,7 +79,7 @@ func main() {
 		&cli.BoolFlag{
 			Name:    "debug",
 			Usage:   "print debug information",
-			Sources: cli.EnvVars("KVMRUND_DEBUG", "DEBUG"),
+			Sources: cli.EnvVars("DEBUG"),
 		},
 	}
 

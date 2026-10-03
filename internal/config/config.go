@@ -12,7 +12,7 @@ import (
 
 // Default values, kept in sync with the kvmrun daemon (kvmrun/internal/appconf).
 const (
-	DefaultListenAddr = ":8080"
+	DefaultListenAddr = "127.0.0.1:9394"
 	DefaultDaemonAddr = "unix:@/run/kvmrund.sock"
 	DefaultCertDir    = "/usr/share/kvmrun/tls"
 )

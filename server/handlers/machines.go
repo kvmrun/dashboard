@@ -197,12 +197,12 @@ func (h *Handlers) MigrationStatusJSON(c *gin.Context) {
 				continue
 			}
 			out.Disks = append(out.Disks, model.DiskMigrationProgress{
-				Name:      diskName,
-				Progress:  stat.Progress,
-				Total:     stat.Total,
+				Name:        diskName,
+				Progress:    stat.Progress,
+				Total:       stat.Total,
 				Transferred: stat.Transferred,
-				Remaining: stat.Remaining,
-				Speed:     stat.Speed,
+				Remaining:   stat.Remaining,
+				Speed:       stat.Speed,
 			})
 		}
 		sort.Slice(out.Disks, func(i, j int) bool { return out.Disks[i].Name < out.Disks[j].Name })

@@ -13,3 +13,9 @@ vendor/
 # Cert folder
 cert/*.crt
 cert/*.key
+
+# devcontainer
+devcontainer-lock.json
+
+# Build artifacts
+/packages/
